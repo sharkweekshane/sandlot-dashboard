@@ -9,7 +9,7 @@ DASH.history. Categories have been the same 12 every year, so roto is comparable
 """
 import requests
 
-SEASONS = [2021, 2022, 2023, 2024, 2025, 2026]
+SEASONS = list(range(2016, 2027))  # all available years (2015 and earlier are 404)
 BASE = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
 
 # Duplicate-account merges (by ESPN displayName) -> canonical manager name.
@@ -18,14 +18,24 @@ CANON = {
     "les fishers": "Michael Fisher", "espnfan3508595072": "Michael Fisher",
 }
 
+# Per-season corrections: (year, displayName) -> who really ran that team that year.
+SEASON_OVERRIDE = {(2017, "shane_ubc"): "Josh Cagan"}
+
 # component statId map (same as the main build)
 COMP = {"AB": 0, "H": 1, "HR": 5, "BB": 10, "HBP": 12, "SF": 13, "R": 20,
         "RBI": 21, "SB": 23, "OUTS": 34, "P_H": 37, "P_BB": 39, "ER": 45,
-        "K": 48, "W": 53, "QS": 63, "SVHD": 83}
+        "K": 48, "W": 53, "QS": 63, "SV": 57, "SVHD": 83}
 ACCUM = list(COMP)
-ROTO_CATS = [("R", True), ("HR", True), ("RBI", True), ("SB", True), ("AVG", True),
-             ("OBP", True), ("W", True), ("K", True), ("QS", True), ("SVHD", True),
+# 11 categories used every season; the saves cat is SV (2016-19) or SVHD (2020+).
+ROTO_BASE = [("R", True), ("HR", True), ("RBI", True), ("SB", True), ("AVG", True),
+             ("OBP", True), ("W", True), ("K", True), ("QS", True),
              ("ERA", False), ("WHIP", False)]
+
+
+def roto_cats(data):
+    sc = (data.get("settings") or {}).get("scoringSettings") or {}
+    sids = {int(i["statId"]) for i in sc.get("scoringItems", [])}
+    return ROTO_BASE + [("SVHD", True) if 83 in sids else ("SV", True)]
 
 PALETTE = ["#185FA5", "#1D9E75", "#BA7517", "#639922", "#D4537E", "#7F77DD",
            "#378ADD", "#993C1D", "#5DCAA5", "#888780", "#7d7c76", "#c0392b",
@@ -52,7 +62,7 @@ def clean(fn, ln):
     return " ".join(f"{fn or ''} {ln or ''}".split()).title()
 
 
-def managers(data):
+def managers(data, year):
     """teamId -> canonical manager name (or None if vacant)."""
     members = {m["id"]: m for m in data.get("members", [])}
     out = {}
@@ -62,7 +72,8 @@ def managers(data):
         m = members.get(pid)
         if m:
             dn = m.get("displayName")
-            out[t["id"]] = CANON.get(dn) or clean(m.get("firstName"), m.get("lastName"))
+            out[t["id"]] = (SEASON_OVERRIDE.get((year, dn))
+                            or CANON.get(dn) or clean(m.get("firstName"), m.get("lastName")))
         else:
             out[t["id"]] = None
     return out
@@ -103,7 +114,7 @@ def completed_sides(data, rw):
                 yield wk, sd["teamId"], sbs
 
 
-def season_roto(data, rw, mgr):
+def season_roto(data, rw, mgr, rcats):
     week_comp = {}
     for wk, tid, sbs in completed_sides(data, rw):
         week_comp.setdefault(tid, {})[wk] = {
@@ -120,9 +131,9 @@ def season_roto(data, rw, mgr):
         for t in tids:
             for c in ACCUM:
                 cum[t][c] += week_comp[t][wk][c]
-        vals = {t: {cat: ratio(cat, cum[t]) for cat, _ in ROTO_CATS} for t in tids}
+        vals = {t: {cat: ratio(cat, cum[t]) for cat, _ in rcats} for t in tids}
         pts = {t: 0.0 for t in tids}
-        for cat, higher in ROTO_CATS:
+        for cat, higher in rcats:
             order = sorted(tids, key=lambda t: vals[t][cat])
             i = 0
             while i < len(order):
@@ -173,7 +184,7 @@ def build(cookies, league_id):
         if not data.get("teams"):
             continue
         rw = reg_weeks(data)
-        mgr = managers(data)
+        mgr = managers(data, yr)
         for t, name in mgr.items():
             if name:
                 seen.setdefault(name, set()).add(yr)
@@ -196,7 +207,7 @@ def build(cookies, league_id):
                 add(am, hm, "W"); add(hm, am, "L")
             else:
                 add(hm, am, "T"); add(am, hm, "T")
-        rt = season_roto(data, rw, mgr)
+        rt = season_roto(data, rw, mgr, roto_cats(data))
         if rt:
             roto[str(yr)] = rt
 

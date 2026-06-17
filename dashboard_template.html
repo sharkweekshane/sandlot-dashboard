@@ -449,7 +449,7 @@ const DASH = /*__DASH_DATA__*/null;
     (function(){
       const order=MGR.map(m=>m.name);
       let h='<tr><th class="lbl" style="color:var(--faint)">row vs col</th>';
-      order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th></tr>';
+      order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th><th>Win%</th></tr>';
       MGR.forEach((m,ri)=>{const a=m.name;
         h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+colM[a]+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
         order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
@@ -457,7 +457,7 @@ const DASH = /*__DASH_DATA__*/null;
           if(!rec){h+='<td style="color:var(--faint)">–</td>';return;}
           const g=rec[0]+rec[1]+rec[2],p=g?rec[0]/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
           h+='<td title="'+esc(a)+' vs '+esc(b)+'  '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
-        h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td>';});
+        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?(m.W/tg).toFixed(3).replace(/^0/,''):'—')+'</td>';});
       document.getElementById('h2hmx').innerHTML=h;
     })();
     let rc=null;
@@ -467,7 +467,7 @@ const DASH = /*__DASH_DATA__*/null;
       if(rc)rc.destroy();
       rc=new Chart(document.getElementById('hroto'),{type:'line',data:{labels:rt.weeks,datasets:ds},
         options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
-          scales:{y:{reverse:true,min:1,max:12,ticks:{stepSize:1}},x:{title:{display:true,text:'Week'}}},
+          scales:{y:{reverse:true,min:1,max:names.length,ticks:{stepSize:1}},x:{title:{display:true,text:'Week'}}},
           plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': #'+c.parsed.y}}}}});
       window.__hroto=rc;
       const leg=document.getElementById('hrleg');leg.innerHTML='';
