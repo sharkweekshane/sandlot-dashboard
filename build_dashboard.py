@@ -14,6 +14,7 @@ safe to publish; the .env (cookies) stays local/secret.
 import datetime
 import json
 import os
+import shutil
 from pathlib import Path
 
 import requests
@@ -53,7 +54,8 @@ ROTO_CATS = [("R", True), ("HR", True), ("RBI", True), ("SB", True), ("AVG", Tru
 
 def fetch():
     r = requests.get(BASE, cookies=COOKIES,
-                     params=[("view", "mMatchupScore"), ("view", "mMatchup"), ("view", "mTeam")])
+                     params=[("view", "mMatchupScore"), ("view", "mMatchup"),
+                             ("view", "mTeam"), ("view", "mStandings")])
     r.raise_for_status()
     return r.json()
 
@@ -171,6 +173,23 @@ def main():
     # ---- assemble ----
     by_name = lambda tid: meta[tid]["name"]
     standings = sorted(tids, key=lambda t: (-overall[t][0], overall[t][1]))
+
+    # Real H2H league standings (ESPN record + playoff seed)
+    raw_teams = {t["id"]: t for t in data.get("teams", [])}
+    h2h = []
+    for tid in tids:
+        ov = ((raw_teams.get(tid) or {}).get("record") or {}).get("overall") or {}
+        slen = int(ov.get("streakLength") or 0)
+        stype = ov.get("streakType") or "NONE"
+        streak = (stype[0] + str(slen)) if stype in ("WIN", "LOSS") and slen else "—"
+        h2h.append({
+            "name": meta[tid]["name"], "rank": (raw_teams.get(tid) or {}).get("playoffSeed"),
+            "w": ov.get("wins", 0), "l": ov.get("losses", 0), "t": ov.get("ties", 0),
+            "pct": round(ov.get("percentage", 0.0), 3), "gb": ov.get("gamesBack", 0.0),
+            "streak": streak,
+        })
+    h2h.sort(key=lambda x: (x["rank"] if x["rank"] is not None else 99))
+
     dash = {
         "meta": {
             "league": "Sandlot", "leagueId": int(LEAGUE_ID), "season": int(SEASON),
@@ -180,6 +199,7 @@ def main():
         },
         "teams": [{"name": meta[t]["name"], "abbrev": meta[t]["abbrev"], "color": meta[t]["color"]}
                   for t in standings],
+        "standings": h2h,
         "records": {by_name(t): {"o": overall[t], "r": {c: records[t][c] for c in CATS}}
                     for t in tids},
         "rotoRankByWeek": {by_name(t): roto_rank[t] for t in tids},
@@ -198,6 +218,13 @@ def main():
         built = "dist/index.html + dist/dashboard_data.json"
     else:
         built = "dist/dashboard_data.json (template not found yet)"
+
+    # Copy static assets (header image, etc.) into dist/ so they deploy
+    assets = ROOT / "assets"
+    if assets.exists():
+        for f in assets.iterdir():
+            if f.is_file():
+                shutil.copy(f, DIST / f.name)
 
     print(f"Built {built}")
     print(f"as of {dash['meta']['asOf']} | weeks 1-{weeks[-1]} | {len(standings)} teams")

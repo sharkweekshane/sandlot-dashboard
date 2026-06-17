@@ -31,6 +31,10 @@ label{font-size:13px;color:var(--muted)}
 .row{display:grid;grid-template-columns:54px 1fr 70px 50px;align-items:center;gap:10px;padding:5px 0}
 .foot{color:var(--faint);font-size:12px;margin-top:24px;text-align:center}
 .hi{color:var(--text);font-weight:600}
+.ttl{font-size:15px;font-weight:600;margin-bottom:2px}
+.note{font-size:13px;color:var(--muted);margin-bottom:10px}
+th.srt{cursor:pointer;user-select:none}
+th.srt:hover{color:var(--text)}
 svg text{fill:var(--muted)}
 .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .08s;z-index:9}
 .bphit{cursor:pointer}.bphit:hover{stroke:var(--text);stroke-width:1.2}
@@ -38,9 +42,13 @@ svg text{fill:var(--muted)}
 </head>
 <body>
 <div class="wrap">
-<header>
-  <h1>🏟️ Sandlot — Roto &amp; Category Dashboard</h1>
-  <div class="sub" id="sub"></div>
+<header style="display:flex;align-items:center;gap:14px">
+  <img src="header.png" alt="The Sandlot" onerror="this.remove()"
+       style="height:72px;width:auto;border-radius:8px;border:1px solid var(--border)">
+  <div>
+    <h1>Sandlot — Roto &amp; Category Dashboard</h1>
+    <div class="sub" id="sub"></div>
+  </div>
 </header>
 <div class="tabs">
   <button class="tab active" data-tab="standings">Standings</button>
@@ -51,7 +59,13 @@ svg text{fill:var(--muted)}
 
 <div class="panel active" id="standings">
   <div class="card">
-    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Each team's weekly category battles (12 cats × weeks) vs its opponent, alongside its all-play roto standing.</div>
+    <div class="ttl">League standings — head-to-head</div>
+    <div class="note">Official ESPN standings: most-categories matchup record. Click any column to sort.</div>
+    <table id="h2htbl"></table>
+  </div>
+  <div class="card">
+    <div class="ttl">Category-battle standings</div>
+    <div class="note">Total weekly category wins (12 cats × weeks) vs each opponent, beside the all-play roto standing.</div>
     <table id="standtbl"></table>
   </div>
 </div>
@@ -97,6 +111,21 @@ const DASH = /*__DASH_DATA__*/null;
   const fmt=(c,v)=>v==null?"—":(RATIO.has(c)?(+v).toFixed(3):Math.round(v));
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const ord=n=>{const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+  function sortTable(el,cols,rows,sk,sd){
+    sd=sd||'asc';
+    const v=(r,c)=>c.val?c.val(r):r[c.key];
+    function draw(){
+      const cc=cols.find(x=>x.key===sk);
+      const rs=rows.slice().sort((a,b)=>{const x=v(a,cc),y=v(b,cc);
+        if(cc.type==='num')return sd==='asc'?x-y:y-x;
+        return sd==='asc'?String(x).localeCompare(String(y)):String(y).localeCompare(String(x));});
+      let html='<tr>'+cols.map(c=>'<th class="srt'+(c.align==='r'?' n':'')+'" data-k="'+c.key+'">'+c.label+(c.key===sk?(sd==='asc'?' ▲':' ▼'):'')+'</th>').join('')+'</tr>';
+      html+=rs.map(r=>'<tr>'+cols.map(c=>'<td'+(c.align==='r'?' class="n"':'')+'>'+(c.fmt?c.fmt(r):v(r,c))+'</td>').join('')+'</tr>').join('');
+      el.innerHTML=html;
+      el.querySelectorAll('th.srt').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sk){sd=sd==='asc'?'desc':'asc';}else{sk=k;sd=cols.find(x=>x.key===k).dir0||'asc';}draw();});
+    }
+    draw();
+  }
   document.getElementById('sub').textContent=`${M.season} season · through week ${M.completedThrough} · updated ${M.asOf}`;
   document.getElementById('foot').textContent=`League ${M.leagueId} · derived stats only, no credentials · ${WEEKS.length} weeks`;
 
@@ -107,16 +136,28 @@ const DASH = /*__DASH_DATA__*/null;
     if(b.dataset.tab==='roto'&&window.__rotoChart)window.__rotoChart.resize();
   });
 
-  // ---------- Standings ----------
+  // ---------- Standings (two sortable tables) ----------
   (function(){
-    const rotoLast={};TEAMS.forEach(t=>rotoLast[t.name]=DASH.rotoRankByWeek[t.name][WEEKS.length-1]);
-    let h='<tr><th>#</th><th>Team</th><th class="n">Cat W-L-T</th><th class="n">Win%</th><th class="n">Roto #</th><th class="n">Roto pts</th></tr>';
-    TEAMS.forEach((t,i)=>{
-      const o=DASH.records[t.name].o,g=o[0]+o[1]+o[2],wp=(o[0]/g).toFixed(3).replace(/^0/,'');
-      h+=`<tr><td>${i+1}</td><td><span class="sw" style="display:inline-block;background:${t.color};margin-right:7px"></span>${esc(t.name)}</td>`
-       +`<td class="n">${o[0]}-${o[1]}-${o[2]}</td><td class="n">${wp}</td><td class="n">${rotoLast[t.name]}</td><td class="n">${DASH.rotoPointsLast[t.name]}</td></tr>`;
-    });
-    document.getElementById('standtbl').innerHTML=h;
+    const last=WEEKS.length-1;
+    const sw=n=>'<span class="sw" style="display:inline-block;background:'+colOf[n]+';margin-right:7px"></span>';
+    const pct=v=>v.toFixed(3).replace(/^0/,'');
+    sortTable(document.getElementById('h2htbl'),[
+      {key:'rank',label:'#',align:'l',type:'num',dir0:'asc'},
+      {key:'name',label:'Team',align:'l',type:'str',dir0:'asc',fmt:r=>sw(r.name)+esc(r.name)},
+      {key:'wlt',label:'W-L-T',align:'r',type:'num',dir0:'desc',val:r=>r.w+r.t/100,fmt:r=>r.w+'-'+r.l+'-'+r.t},
+      {key:'pct',label:'Win%',align:'r',type:'num',dir0:'desc',fmt:r=>pct(r.pct)},
+      {key:'gb',label:'GB',align:'r',type:'num',dir0:'asc',fmt:r=>r.gb?r.gb:'—'},
+      {key:'streak',label:'Streak',align:'r',type:'str',dir0:'desc'},
+    ],DASH.standings,'rank','asc');
+    const rows=TEAMS.map((t,i)=>{const o=DASH.records[t.name].o;return{name:t.name,catRank:i+1,w:o[0],l:o[1],t:o[2],pct:o[0]/(o[0]+o[1]+o[2]),rr:DASH.rotoRankByWeek[t.name][last],rp:DASH.rotoPointsLast[t.name]};});
+    sortTable(document.getElementById('standtbl'),[
+      {key:'catRank',label:'#',align:'l',type:'num',dir0:'asc'},
+      {key:'name',label:'Team',align:'l',type:'str',dir0:'asc',fmt:r=>sw(r.name)+esc(r.name)},
+      {key:'wlt',label:'Cat W-L-T',align:'r',type:'num',dir0:'desc',val:r=>r.w,fmt:r=>r.w+'-'+r.l+'-'+r.t},
+      {key:'pct',label:'Win%',align:'r',type:'num',dir0:'desc',fmt:r=>pct(r.pct)},
+      {key:'rr',label:'Roto #',align:'r',type:'num',dir0:'asc'},
+      {key:'rp',label:'Roto pts',align:'r',type:'num',dir0:'desc'},
+    ],rows,'catRank','asc');
   })();
 
   // ---------- Roto race ----------
