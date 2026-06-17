@@ -39,6 +39,14 @@ th.srt:hover{color:var(--text)}
 .seg{appearance:none;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;cursor:pointer}
 .seg.active{color:var(--text);border-color:var(--accent)}
 .chip.on{border-color:var(--accent);color:var(--text)}
+#predmx{border-collapse:collapse;font-size:13px;min-width:660px}
+#predmx td,#predmx th{padding:4px 5px;text-align:center;border-bottom:none;white-space:nowrap}
+#predmx th{font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+#predmx td.lbl,#predmx th.lbl{text-align:left}
+.mxc{cursor:pointer;border-radius:4px}
+.mxc:hover{outline:2px solid var(--accent)}
+.wtl{display:flex;height:22px;border-radius:6px;overflow:hidden;font-size:11px;color:#fff}
+.wtl>div{display:flex;align-items:center;justify-content:center}
 svg text{fill:var(--muted)}
 .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .08s;z-index:9}
 .bphit{cursor:pointer}.bphit:hover{stroke:var(--text);stroke-width:1.2}
@@ -60,6 +68,7 @@ svg text{fill:var(--muted)}
   <button class="tab" data-tab="spreads">Category spreads</button>
   <button class="tab" data-tab="report">Team report</button>
   <button class="tab" data-tab="wh">Wubbies &amp; HAGS</button>
+  <button class="tab" data-tab="pred">Predictions</button>
 </div>
 
 <div class="panel active" id="standings">
@@ -112,6 +121,22 @@ svg text{fill:var(--muted)}
     <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Pick up to 3 teams:</div>
     <div id="whteams" class="legend" style="margin-bottom:8px"></div>
     <div id="whout"></div>
+  </div>
+</div>
+
+<div class="panel" id="pred">
+  <div class="card">
+    <div class="ctrl">
+      <span style="font-size:13px;color:var(--muted)">Recency weight</span>
+      <input type="range" id="reclam" min="0.7" max="1" step="0.05" value="1" style="width:150px">
+      <span id="reclbl" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <div class="note" id="prednote"></div>
+    <div style="overflow-x:auto"><table id="predmx"></table></div>
+  </div>
+  <div class="card">
+    <div class="ctrl"><span style="font-size:13px;color:var(--muted)">Matchup</span><select id="pA"></select><span style="color:var(--muted)">beats</span><select id="pB"></select></div>
+    <div id="preddrill"></div>
   </div>
 </div>
 
@@ -315,6 +340,82 @@ const DASH = /*__DASH_DATA__*/null;
     sW.onclick=()=>{metric='WUBBIES';sW.classList.add('active');sH.classList.remove('active');out();};
     sH.onclick=()=>{metric='HAGS';sH.classList.add('active');sW.classList.remove('active');out();};
     out();
+  })();
+
+  // ---------- Predictions (whole-week bootstrap matchup sim) ----------
+  (function(){
+    const WV=DASH.weeklyValues,nW=WEEKS.length;
+    const HB=c=>!LOWER.has(c);
+    const wts=lam=>{const w=[];for(let i=0;i<nW;i++)w.push(Math.pow(lam,(nW-1)-i));return w;};
+    const wmean=(a,w)=>{let s=0,sw=0;a.forEach((v,i)=>{if(v!=null){s+=v*w[i];sw+=w[i];}});return sw?s/sw:0;};
+    function pair(A,B,w){
+      let Wn=0,Tn=0,Ln=0,tot=0,expA=0;const per={};CATS.forEach(c=>per[c]=0);const dist=new Array(13).fill(0);
+      for(let i=0;i<nW;i++)for(let j=0;j<nW;j++){
+        const pw=w[i]*w[j];tot+=pw;let aw=0,bw=0,tw=0;
+        CATS.forEach(c=>{const x=WV[c][A][i],y=WV[c][B][j];if(x==null||y==null)return;
+          const aB=HB(c)?x>y:x<y,bB=HB(c)?x<y:x>y;
+          if(aB){aw++;per[c]+=pw;}else if(bB){bw++;}else{tw++;per[c]+=pw*0.5;}});
+        dist[aw]+=pw;expA+=pw*(aw+0.5*tw);
+        if(aw>bw)Wn+=pw;else if(aw===bw)Tn+=pw;else Ln+=pw;
+      }
+      const k=12,headline=(Wn+0.5*Tn+0.5*k)/(tot+k),perCat={};CATS.forEach(c=>perCat[c]=per[c]/tot);
+      return {pWin:Wn/tot,pTie:Tn/tot,pLoss:Ln/tot,headline,expA:expA/tot,perCat,dist:dist.map(d=>d/tot)};
+    }
+    let order=TEAMS.map(t=>t.name),power={};
+    function compute(lam){
+      const w=wts(lam),hl={};TEAMS.forEach(a=>hl[a.name]={});
+      TEAMS.forEach(a=>TEAMS.forEach(b=>{if(a.name!==b.name)hl[a.name][b.name]=pair(a.name,b.name,w).headline;}));
+      power={};TEAMS.forEach(a=>{let s=0,n=0;TEAMS.forEach(b=>{if(a.name!==b.name){s+=hl[a.name][b.name];n++;}});power[a.name]=s/n;});
+      order=TEAMS.map(t=>t.name).sort((x,y)=>power[y]-power[x]);
+      return hl;
+    }
+    function matrix(lam){
+      const hl=compute(lam);
+      let h='<tr><th class="lbl" style="color:var(--faint)">P(row beats col)</th>';
+      order.forEach(b=>h+='<th>'+esc(abbrOf[b])+'</th>');
+      h+='<th>Pwr</th></tr>';
+      order.forEach((a,ri)=>{
+        h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+colOf[a]+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
+        order.forEach(b=>{
+          if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
+          const p=hl[a][b],d=p-0.5,al=Math.min(0.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
+          h+='<td class="mxc" data-a="'+esc(a)+'" data-b="'+esc(b)+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';
+        });
+        h+='<td style="font-weight:600">'+Math.round(power[a]*100)+'</td>';
+      });
+      document.getElementById('predmx').innerHTML=h;
+      document.querySelectorAll('#predmx .mxc').forEach(c=>c.onclick=()=>{document.getElementById('pA').value=c.dataset.a;document.getElementById('pB').value=c.dataset.b;drill();});
+    }
+    const seg=(p,col)=>{const pc=Math.round(p*100);return pc<1?'':'<div style="width:'+pc+'%;background:'+col+'">'+(pc>=8?pc+'%':'')+'</div>';};
+    function drill(){
+      const A=document.getElementById('pA').value,B=document.getElementById('pB').value;
+      const lam=+document.getElementById('reclam').value,w=wts(lam),o=document.getElementById('preddrill');
+      if(A===B){o.innerHTML='<div class="note">Pick two different teams.</div>';return;}
+      const r=pair(A,B,w);
+      let html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap"><span class="sw" style="display:inline-block;background:'+colOf[A]+'"></span><b>'+esc(A)+'</b><span style="color:var(--muted)">beats</span><span class="sw" style="display:inline-block;background:'+colOf[B]+'"></span><b>'+esc(B)+'</b><span style="margin-left:auto;font-size:20px;font-weight:600">'+Math.round(r.headline*100)+'%</span></div>';
+      html+='<div class="wtl">'+seg(r.pWin,'#1f9d63')+seg(r.pTie,'#9b9a92')+seg(r.pLoss,'#e24b4a')+'</div>';
+      html+='<div style="font-size:12px;color:var(--muted);margin:4px 0 12px">Win '+Math.round(r.pWin*100)+'% · Tie '+Math.round(r.pTie*100)+'% · Loss '+Math.round(r.pLoss*100)+'% · expected categories '+r.expA.toFixed(1)+'–'+(12-r.expA).toFixed(1)+'</div>';
+      const rows=CATS.map(c=>({c,p:r.perCat[c],a:wmean(WV[c][A],w),b:wmean(WV[c][B],w)})).sort((x,y)=>y.p-x.p);
+      html+='<table style="width:100%;font-size:13px"><tr><th>Category</th><th class="n">'+esc(abbrOf[A])+'</th><th class="n">'+esc(abbrOf[B])+'</th><th class="n">P('+esc(abbrOf[A])+')</th><th></th></tr>';
+      rows.forEach(x=>{const pc=Math.round(x.p*100);let chip='~',bg='var(--border)',fg='var(--muted)';if(pc>=60){chip=esc(abbrOf[A]);bg='rgba(31,157,99,.15)';fg='#1f9d63';}else if(pc<=40){chip=esc(abbrOf[B]);bg='rgba(226,75,74,.15)';fg='#e24b4a';}
+        html+='<tr><td>'+x.c+'</td><td class="n">'+fmt(x.c,x.a)+'</td><td class="n">'+fmt(x.c,x.b)+'</td><td class="n">'+pc+'%</td><td class="n"><span class="badge" style="background:'+bg+';color:'+fg+'">'+chip+'</span></td></tr>';});
+      html+='</table>';
+      const mx=Math.max.apply(null,r.dist);
+      html+='<div style="font-size:13px;color:var(--muted);margin:14px 0 4px">'+esc(abbrOf[A])+' categories won (of 12) — 7+ guarantees the week</div><div style="display:flex;align-items:flex-end;gap:3px;height:72px">';
+      r.dist.forEach((d,n)=>{const hh=mx?Math.round(d/mx*60):0,col=n>=7?'#1f9d63':(n===6?'#9b9a92':'#e24b4a');
+        html+='<div style="flex:1;text-align:center"><div style="height:'+hh+'px;background:'+col+';border-radius:2px 2px 0 0"></div><div style="font-size:11px;color:var(--faint)">'+n+'</div></div>';});
+      html+='</div>';
+      o.innerHTML=html;
+    }
+    const pA=document.getElementById('pA'),pB=document.getElementById('pB');
+    TEAMS.forEach(t=>{pA.add(new Option(t.name,t.name));pB.add(new Option(t.name,t.name));});
+    pA.value=TEAMS[0].name;pB.value=TEAMS[1].name;pA.onchange=drill;pB.onchange=drill;
+    const lamEl=document.getElementById('reclam');
+    function refresh(){const lam=+lamEl.value;
+      document.getElementById('reclbl').textContent=lam>=1?'equal — all 11 weeks':'λ='+lam.toFixed(2)+' — recent weeks heavier';
+      document.getElementById('prednote').textContent='Win probability if these rosters played a neutral week (most categories wins the matchup). Rows beat columns; click a cell for the breakdown. Based on 11 weeks; extremes lightly smoothed.';
+      matrix(lam);drill();}
+    lamEl.oninput=refresh;refresh();
   })();
 })();
 </script>
