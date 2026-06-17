@@ -232,7 +232,7 @@ def build(cookies, league_id):
         "seasons": sorted(seen[a]),
         "W": totals[a][0], "L": totals[a][1], "T": totals[a][2],
     } for a in mlist]
-    managers_out.sort(key=lambda m: (-(m["W"]), m["L"]))
+    managers_out.sort(key=lambda m: (-(m["W"] / ((m["W"] + m["L"] + m["T"]) or 1)), -m["W"]))
 
     return {
         "seasons": [y for y in SEASONS if str(y) in roto] or SEASONS,

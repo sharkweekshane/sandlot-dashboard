@@ -17,7 +17,7 @@ header .sub{color:var(--muted);font-size:14px;margin-top:4px}
 .tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:500;padding:8px 12px;cursor:pointer}
 .tab.active{color:var(--text);border-bottom-color:var(--accent)}
 .panel{display:none}.panel.active{display:block}
-#history.active{width:min(96vw,1400px);margin-left:50%;transform:translateX(-50%)}
+#history.active{width:min(98vw,1600px);margin-left:50%;transform:translateX(-50%)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
@@ -44,6 +44,7 @@ th.srt:hover{color:var(--text)}
 #predmx td,#predmx th,#h2hmx td,#h2hmx th{padding:4px 5px;text-align:center;border-bottom:none;white-space:nowrap}
 #predmx th,#h2hmx th{font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
 #predmx td.lbl,#predmx th.lbl,#h2hmx td.lbl,#h2hmx th.lbl{text-align:left}
+#h2hmx{font-size:12px;min-width:0}#h2hmx td,#h2hmx th{padding:3px 4px}
 .mxc{cursor:pointer;border-radius:4px}
 .mxc:hover{outline:2px solid var(--accent)}
 .wtl{display:flex;height:22px;border-radius:6px;overflow:hidden;font-size:11px;color:#fff}
@@ -449,7 +450,7 @@ const DASH = /*__DASH_DATA__*/null;
     (function(){
       const order=MGR.map(m=>m.name);
       let h='<tr><th class="lbl" style="color:var(--faint)">row vs col</th>';
-      order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th><th>Win%</th></tr>';
+      order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th><th>Win%</th><th>Yrs</th></tr>';
       MGR.forEach((m,ri)=>{const a=m.name;
         h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+colM[a]+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
         order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
@@ -457,7 +458,7 @@ const DASH = /*__DASH_DATA__*/null;
           if(!rec){h+='<td style="color:var(--faint)">–</td>';return;}
           const g=rec[0]+rec[1]+rec[2],p=g?rec[0]/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
           h+='<td title="'+esc(a)+' vs '+esc(b)+'  '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
-        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?(m.W/tg).toFixed(3).replace(/^0/,''):'—')+'</td>';});
+        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?(m.W/tg).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.seasons.join(', ')+'">'+m.seasons.length+'</td>';});
       document.getElementById('h2hmx').innerHTML=h;
     })();
     let rc=null;
