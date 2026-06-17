@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandlot — Roto &amp; Category Dashboard</title>
+<style>
+:root{--bg:#f6f6f3;--card:#fff;--text:#1b1b19;--muted:#6b6a64;--faint:#9b9a92;--border:#e3e2db;--accent:#185FA5;--win:#1f9d63;--tie:#b4b2a9;--loss:#e24b4a}
+@media(prefers-color-scheme:dark){:root{--bg:#17171a;--card:#202024;--text:#ececec;--muted:#a3a29b;--faint:#76756f;--border:#34343a;--accent:#5aa0ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+.wrap{max-width:920px;margin:0 auto;padding:20px 18px 48px}
+header h1{font-size:22px;font-weight:600;margin:0}
+header .sub{color:var(--muted);font-size:14px;margin-top:4px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 16px;border-bottom:1px solid var(--border)}
+.tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:500;padding:8px 12px;cursor:pointer}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right}
+select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px}
+label{font-size:13px;color:var(--muted)}
+.ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.chip{display:flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;background:var(--card)}
+.chip.dim{opacity:.4}.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.badge{font-size:12px;padding:2px 0;border-radius:8px;text-align:center}
+.row{display:grid;grid-template-columns:54px 1fr 70px 50px;align-items:center;gap:10px;padding:5px 0}
+.foot{color:var(--faint);font-size:12px;margin-top:24px;text-align:center}
+.hi{color:var(--text);font-weight:600}
+svg text{fill:var(--muted)}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .08s;z-index:9}
+.bphit{cursor:pointer}.bphit:hover{stroke:var(--text);stroke-width:1.2}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>🏟️ Sandlot — Roto &amp; Category Dashboard</h1>
+  <div class="sub" id="sub"></div>
+</header>
+<div class="tabs">
+  <button class="tab active" data-tab="standings">Standings</button>
+  <button class="tab" data-tab="roto">Roto race</button>
+  <button class="tab" data-tab="spreads">Category spreads</button>
+  <button class="tab" data-tab="report">Team report</button>
+</div>
+
+<div class="panel active" id="standings">
+  <div class="card">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Each team's weekly category battles (12 cats × weeks) vs its opponent, alongside its all-play roto standing.</div>
+    <table id="standtbl"></table>
+  </div>
+</div>
+
+<div class="panel" id="roto">
+  <div class="card">
+    <div class="ctrl"><span style="font-size:13px;color:var(--muted)">Click a team to trace it</span><button class="chip" id="rtall">Show all</button></div>
+    <div style="position:relative;height:380px"><canvas id="rtc"></canvas></div>
+    <div class="legend" id="rtleg"></div>
+  </div>
+</div>
+
+<div class="panel" id="spreads">
+  <div class="card">
+    <div class="ctrl">
+      <label for="bcat">Category</label><select id="bcat"></select>
+      <label for="bhi" style="margin-left:8px">Highlight</label><select id="bhi"></select>
+      <span id="bdir" style="font-size:13px;color:var(--faint)"></span>
+    </div>
+    <div id="bouter" style="position:relative"><div id="bwrap"></div><div id="btip" class="tip"></div></div>
+    <div class="legend" id="bleg"></div>
+  </div>
+</div>
+
+<div class="panel" id="report">
+  <div class="card">
+    <div class="ctrl"><label for="tsel">Team</label><select id="tsel"></select></div>
+    <div id="tcard"></div>
+  </div>
+</div>
+
+<div class="foot" id="foot"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const DASH = /*__DASH_DATA__*/null;
+(function(){
+  if(!DASH){document.getElementById('sub').textContent='Data not loaded — run build_dashboard.py';return;}
+  const M=DASH.meta, TEAMS=DASH.teams, CATS=M.cats, WEEKS=M.weeks, LOWER=new Set(M.lowerBetter);
+  const colOf={},abbrOf={};TEAMS.forEach(t=>{colOf[t.name]=t.color;abbrOf[t.name]=t.abbrev;});
+  const RATIO=new Set(["AVG","OBP","ERA","WHIP"]);
+  const fmt=(c,v)=>v==null?"—":(RATIO.has(c)?(+v).toFixed(3):Math.round(v));
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const ord=n=>{const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+  document.getElementById('sub').textContent=`${M.season} season · through week ${M.completedThrough} · updated ${M.asOf}`;
+  document.getElementById('foot').textContent=`League ${M.leagueId} · derived stats only, no credentials · ${WEEKS.length} weeks`;
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===b.dataset.tab));
+    if(b.dataset.tab==='roto'&&window.__rotoChart)window.__rotoChart.resize();
+  });
+
+  // ---------- Standings ----------
+  (function(){
+    const rotoLast={};TEAMS.forEach(t=>rotoLast[t.name]=DASH.rotoRankByWeek[t.name][WEEKS.length-1]);
+    let h='<tr><th>#</th><th>Team</th><th class="n">Cat W-L-T</th><th class="n">Win%</th><th class="n">Roto #</th><th class="n">Roto pts</th></tr>';
+    TEAMS.forEach((t,i)=>{
+      const o=DASH.records[t.name].o,g=o[0]+o[1]+o[2],wp=(o[0]/g).toFixed(3).replace(/^0/,'');
+      h+=`<tr><td>${i+1}</td><td><span class="sw" style="display:inline-block;background:${t.color};margin-right:7px"></span>${esc(t.name)}</td>`
+       +`<td class="n">${o[0]}-${o[1]}-${o[2]}</td><td class="n">${wp}</td><td class="n">${rotoLast[t.name]}</td><td class="n">${DASH.rotoPointsLast[t.name]}</td></tr>`;
+    });
+    document.getElementById('standtbl').innerHTML=h;
+  })();
+
+  // ---------- Roto race ----------
+  (function(){
+    let focus=null;
+    const ds=TEAMS.map(t=>({label:t.name,data:DASH.rotoRankByWeek[t.name],_c:t.color,borderColor:t.color,backgroundColor:t.color,tension:.25,pointRadius:0,pointHoverRadius:5,borderWidth:2}));
+    const ch=new Chart(document.getElementById('rtc'),{type:'line',data:{labels:WEEKS,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
+        scales:{y:{reverse:true,min:1,max:TEAMS.length,ticks:{stepSize:1}},x:{title:{display:true,text:'Week'}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: #${c.parsed.y}`}}}}});
+    window.__rotoChart=ch;
+    function ap(){ch.data.datasets.forEach(d=>{const on=focus===null||d.label===focus;d.borderColor=on?d._c:d._c+'2e';d.borderWidth=d.label===focus?4:(focus===null?2:1.4);d.pointRadius=d.label===focus?4:0;d.order=d.label===focus?0:1;});ch.update();
+      document.querySelectorAll('#rtleg .chip').forEach(c=>c.classList.toggle('dim',!(focus===null||c.dataset.t===focus)));}
+    const leg=document.getElementById('rtleg');
+    TEAMS.slice().sort((a,b)=>DASH.rotoRankByWeek[a.name][WEEKS.length-1]-DASH.rotoRankByWeek[b.name][WEEKS.length-1]).forEach(t=>{
+      const c=document.createElement('div');c.className='chip';c.dataset.t=t.name;
+      c.innerHTML=`<span class="sw" style="background:${t.color}"></span>${esc(t.name)}`;
+      c.onclick=()=>{focus=focus===t.name?null:t.name;ap();};leg.appendChild(c);});
+    document.getElementById('rtall').onclick=()=>{focus=null;ap();};
+  })();
+
+  // ---------- Category spreads (box plots) ----------
+  (function(){
+    const W=700,H=440,mL=46,mR=12,mT=14,mB=96,pW=W-mL-mR,pH=H-mT-mB,colW=pW/12,half=15,jR=14;
+    let HI="";
+    function q(s,p){const n=s.length;if(!n)return null;const i=(n-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return lo===hi?s[lo]:s[lo]+(s[hi]-s[lo])*(i-lo);}
+    function st(arr){const pts=[];arr.forEach((v,i)=>{if(v!=null)pts.push({w:WEEKS[i],v});});const s=pts.map(p=>p.v).slice().sort((a,b)=>a-b);return{pts,s,n:s.length,min:s[0],max:s[s.length-1],q1:q(s,.25),med:q(s,.5),q3:q(s,.75)};}
+    function jit(i,w){const x=Math.sin(i*127.1+w*311.7)*43758.5453;return((x-Math.floor(x))-.5)*2;}
+    function draw(cat){
+      const low=LOWER.has(cat);
+      const per=TEAMS.map((t,i)=>({i,t,st:st(DASH.weeklyValues[cat][t.name])}));
+      let all=[];per.forEach(p=>all=all.concat(p.st.s));let lo=Math.min.apply(null,all),hi=Math.max.apply(null,all);
+      let pad=(hi-lo)*.06;if(!pad)pad=Math.abs(hi)*.06||1;lo-=pad;hi+=pad;const yf=v=>mT+pH*(1-(v-lo)/(hi-lo));
+      const ord2=per.slice().sort((a,b)=>low?a.st.med-b.st.med:b.st.med-a.st.med);
+      let g='',hits='';
+      for(let k=0;k<5;k++){const val=lo+(hi-lo)*k/4,y=yf(val);g+='<line x1="'+mL+'" y1="'+y.toFixed(1)+'" x2="'+(W-mR)+'" y2="'+y.toFixed(1)+'" stroke="var(--border)"/>';g+='<text x="'+(mL-6)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="11">'+fmt(cat,val)+'</text>';}
+      ord2.forEach((p,k)=>{const cx=mL+(k+.5)*colW,col=p.t.color,me=p.t.name===HI,s=p.st;
+        if(me)g+='<rect x="'+(cx-colW/2+1).toFixed(1)+'" y="'+mT+'" width="'+(colW-2).toFixed(1)+'" height="'+pH+'" fill="var(--text)" opacity="0.06"/>';
+        if(s.n){const ymin=yf(s.min),ymax=yf(s.max),yq1=yf(s.q1),yq3=yf(s.q3),ym=yf(s.med);
+          g+='<line x1="'+cx.toFixed(1)+'" y1="'+ymax.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+ymin.toFixed(1)+'" stroke="'+col+'" stroke-width="1.1" opacity=".8"/>';
+          g+='<line x1="'+(cx-6).toFixed(1)+'" y1="'+ymax.toFixed(1)+'" x2="'+(cx+6).toFixed(1)+'" y2="'+ymax.toFixed(1)+'" stroke="'+col+'"/>';
+          g+='<line x1="'+(cx-6).toFixed(1)+'" y1="'+ymin.toFixed(1)+'" x2="'+(cx+6).toFixed(1)+'" y2="'+ymin.toFixed(1)+'" stroke="'+col+'"/>';
+          g+='<rect x="'+(cx-half).toFixed(1)+'" y="'+yq3.toFixed(1)+'" width="'+(half*2)+'" height="'+Math.max(1,yq1-yq3).toFixed(1)+'" fill="'+col+'" fill-opacity=".16" stroke="'+col+'" stroke-width="'+(me?2.2:1.3)+'"/>';
+          g+='<line x1="'+(cx-half).toFixed(1)+'" y1="'+ym.toFixed(1)+'" x2="'+(cx+half).toFixed(1)+'" y2="'+ym.toFixed(1)+'" stroke="'+col+'" stroke-width="'+(me?2.6:1.8)+'"/>';
+          s.pts.forEach(pt=>{const px=cx+jit(p.i,pt.w)*jR,py=yf(pt.v);
+            g+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="3" fill="'+col+'" fill-opacity=".85" stroke="var(--card)" stroke-width=".6" pointer-events="none"/>';
+            hits+='<circle class="bphit" cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="8" fill="transparent" stroke="transparent" data-team="'+esc(p.t.name)+'" data-col="'+col+'" data-wk="'+pt.w+'" data-cat="'+cat+'" data-val="'+fmt(cat,pt.v)+'"/>';});}
+        g+='<text x="'+cx.toFixed(1)+'" y="'+(mT+pH+16)+'" text-anchor="end" transform="rotate(-42 '+cx.toFixed(1)+' '+(mT+pH+16)+')" font-size="11" '+(me?'style="fill:'+col+'" font-weight="600"':'')+'>'+esc(p.t.abbrev)+'</text>';});
+      document.getElementById('bwrap').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+g+hits+'</svg>';
+      document.getElementById('bdir').textContent=(low?'↓ lower is better':'↑ higher is better')+' · hover a dot for week & value (n='+WEEKS.length+')';
+    }
+    const outer=document.getElementById('bouter'),tip=document.getElementById('btip');
+    outer.addEventListener('mousemove',e=>{const c=e.target.closest('.bphit');if(!c){tip.style.opacity=0;return;}
+      const r=outer.getBoundingClientRect();
+      tip.innerHTML='<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+c.dataset.col+';margin-right:6px"></span><b>'+c.dataset.team+'</b><br><span style="color:var(--muted)">Week '+c.dataset.wk+' · '+c.dataset.cat+'</span>: '+c.dataset.val;
+      tip.style.opacity=1;let x=e.clientX-r.left+14,y=e.clientY-r.top+14;
+      if(x+tip.offsetWidth>r.width)x=e.clientX-r.left-tip.offsetWidth-14;if(y+tip.offsetHeight>r.height)y=e.clientY-r.top-tip.offsetHeight-14;
+      tip.style.left=x+'px';tip.style.top=y+'px';});
+    outer.addEventListener('mouseleave',()=>tip.style.opacity=0);
+    const bc=document.getElementById('bcat');
+    [['Hitting',['R','HR','RBI','SB','AVG','OBP']],['Pitching',['W','K','QS','SVHD','ERA','WHIP']]].forEach(grp=>{const og=document.createElement('optgroup');og.label=grp[0];grp[1].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;og.appendChild(o);});bc.appendChild(og);});
+    bc.value='HR';bc.onchange=()=>draw(bc.value);
+    const bh=document.getElementById('bhi');bh.innerHTML='<option value="">(none)</option>';
+    TEAMS.forEach(t=>{const o=document.createElement('option');o.value=t.name;o.textContent=t.name;bh.appendChild(o);});
+    bh.onchange=()=>{HI=bh.value;draw(bc.value);};
+    const leg=document.getElementById('bleg');
+    TEAMS.forEach(t=>{leg.innerHTML+='<span class="chip" style="cursor:default"><span class="sw" style="background:'+t.color+'"></span><b>'+esc(t.abbrev)+'</b> '+esc(t.name)+'</span>';});
+    draw('HR');
+  })();
+
+  // ---------- Team report card ----------
+  (function(){
+    const WIN='var(--win)',TIE='var(--tie)',LOSS='var(--loss)';
+    const ranks=CATS.map((c,ci)=>{const arr=TEAMS.map(t=>({n:t.name,W:DASH.records[t.name].r[c][0],L:DASH.records[t.name].r[c][1]}));arr.sort((a,b)=>b.W-a.W||a.L-b.L);const m={};arr.forEach((x,p)=>m[x.n]=p+1);return m;});
+    function render(name){
+      const t=TEAMS.find(x=>x.name===name),rec=DASH.records[name],o=rec.o,G=o[0]+o[1]+o[2],wp=(o[0]/G).toFixed(3).replace(/^0/,'');
+      const oRank=TEAMS.findIndex(x=>x.name===name)+1;
+      let rd=CATS.map((c,ci)=>({c,ci,w:rec.r[c][0],l:rec.r[c][1],t:rec.r[c][2],rk:ranks[ci][name]}));
+      rd.sort((a,b)=>b.w-a.w||a.l-b.l);
+      const strong=rd.slice(0,2).map(x=>x.c).join(', '),weak=rd.slice(-2).map(x=>x.c).reverse().join(', ');
+      let rows='';rd.forEach(x=>{const tot=x.w+x.l+x.t;let bg='var(--border)',fg='var(--muted)';
+        if(x.rk<=4){bg='rgba(31,157,99,.15)';fg='var(--win)';}else if(x.rk>=9){bg='rgba(226,75,74,.15)';fg='var(--loss)';}
+        rows+='<div class="row"><span style="font-size:13px;font-weight:600">'+x.c+'</span>'
+         +'<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--border)"><div style="width:'+(x.w/tot*100)+'%;background:'+WIN+'"></div><div style="width:'+(x.t/tot*100)+'%;background:'+TIE+'"></div><div style="width:'+(x.l/tot*100)+'%;background:'+LOSS+'"></div></div>'
+         +'<span style="font-size:13px;text-align:right;color:var(--muted)">'+x.w+'-'+x.l+'-'+x.t+'</span>'
+         +'<span class="badge" style="background:'+bg+';color:'+fg+'">'+ord(x.rk)+'</span></div>';});
+      document.getElementById('tcard').innerHTML=
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
+        +'<div style="display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;border-radius:4px;background:'+t.color+'"></span>'
+        +'<div><div style="font-size:16px;font-weight:600">'+esc(name)+'</div><div style="font-size:13px;color:var(--muted)">'+esc(t.abbrev)+' · '+ord(oRank)+' of 12 overall</div></div></div>'
+        +'<div style="text-align:right"><div style="font-size:22px;font-weight:600">'+o[0]+'-'+o[1]+'-'+o[2]+'</div><div style="font-size:13px;color:var(--muted)">'+wp+' category win%</div></div></div>'
+        +'<div style="font-size:13px;color:var(--muted);margin:8px 0">strongest <span class="hi">'+strong+'</span> · weakest <span class="hi">'+weak+'</span></div>'
+        +'<div style="border-top:1px solid var(--border);padding-top:4px">'+rows+'</div>';
+    }
+    const sel=document.getElementById('tsel');
+    TEAMS.forEach(t=>{const o=document.createElement('option');o.value=t.name;o.textContent=t.name+'  ('+DASH.records[t.name].o.join('-')+')';sel.appendChild(o);});
+    sel.onchange=()=>render(sel.value);render(TEAMS[0].name);
+  })();
+})();
+</script>
+</body>
+</html>

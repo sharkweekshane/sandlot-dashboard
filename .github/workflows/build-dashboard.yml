@@ -1,0 +1,55 @@
+name: Build & deploy dashboard
+
+on:
+  schedule:
+    # 07:00 UTC = ~3am US Eastern (EDT during the season; 2am in EST winter).
+    # GitHub may delay scheduled runs under load — fine for a daily refresh.
+    - cron: "0 7 * * *"
+  workflow_dispatch: {}        # lets you run it on demand from the Actions tab
+  push:
+    branches: [main]           # also rebuild on every push to main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy at a time; newer run supersedes an in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Build dashboard
+        env:
+          # Non-secret league config (edit SEASON each year):
+          LEAGUE_ID: "11350"
+          SEASON: "2026"
+          # Secret ESPN auth cookies — set these in repo Settings → Secrets:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+        run: python build_dashboard.py
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
