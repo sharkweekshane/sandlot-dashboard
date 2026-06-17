@@ -148,7 +148,7 @@ svg text{fill:var(--muted)}
     <div class="ctrl">
       <button class="seg active" id="hsegA">H2H records</button>
       <button class="seg" id="hsegB">Roto by season</button>
-      <span style="font-size:13px;color:var(--muted)">2021–present · regular season · by manager</span>
+      <span id="hspan" style="font-size:13px;color:var(--muted)"></span>
     </div>
     <div id="h2hsec">
       <div class="note">All-time head-to-head between managers (deduped people). Cell = row manager's win% vs the column manager; hover for the W-L-T. Ranked by overall record.</div>
@@ -446,6 +446,7 @@ const DASH = /*__DASH_DATA__*/null;
   (function(){
     const H=DASH.history; if(!H||!H.managers)return;
     const ME='Shane Simon',MGR=H.managers,colM={};MGR.forEach(m=>colM[m.name]=m.color);
+    document.getElementById('hspan').textContent=H.seasons[0]+'–present · regular season · by manager';
     const short=n=>{const p=n.split(' ');return p.length>1?p[0]+' '+p[p.length-1][0]+'.':n;};
     (function(){
       const order=MGR.map(m=>m.name);
