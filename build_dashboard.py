@@ -16,6 +16,7 @@ import json
 import os
 import shutil
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
@@ -219,11 +220,12 @@ def main():
         plist.sort(key=lambda p: -p["w"])
         rosters[meta[rt["id"]]["name"]] = plist
 
+    now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
     dash = {
         "meta": {
             "league": "Sandlot", "leagueId": int(LEAGUE_ID), "season": int(SEASON),
-            "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "month": datetime.datetime.now().month,
+            "asOf": now_et.strftime("%Y-%m-%d %H:%M %Z"),
+            "month": now_et.month,
             "weeks": weeks, "completedThrough": weeks[-1],
             "cats": CATS, "lowerBetter": LOWER_BETTER,
         },
