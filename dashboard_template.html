@@ -39,10 +39,10 @@ th.srt:hover{color:var(--text)}
 .seg{appearance:none;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;cursor:pointer}
 .seg.active{color:var(--text);border-color:var(--accent)}
 .chip.on{border-color:var(--accent);color:var(--text)}
-#predmx{border-collapse:collapse;font-size:13px;min-width:660px}
-#predmx td,#predmx th{padding:4px 5px;text-align:center;border-bottom:none;white-space:nowrap}
-#predmx th{font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
-#predmx td.lbl,#predmx th.lbl{text-align:left}
+#predmx,#h2hmx{border-collapse:collapse;font-size:13px;min-width:660px}
+#predmx td,#predmx th,#h2hmx td,#h2hmx th{padding:4px 5px;text-align:center;border-bottom:none;white-space:nowrap}
+#predmx th,#h2hmx th{font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+#predmx td.lbl,#predmx th.lbl,#h2hmx td.lbl,#h2hmx th.lbl{text-align:left}
 .mxc{cursor:pointer;border-radius:4px}
 .mxc:hover{outline:2px solid var(--accent)}
 .wtl{display:flex;height:22px;border-radius:6px;overflow:hidden;font-size:11px;color:#fff}
@@ -69,6 +69,7 @@ svg text{fill:var(--muted)}
   <button class="tab" data-tab="report">Team report</button>
   <button class="tab" data-tab="wh">Wubbies &amp; HAGS</button>
   <button class="tab" data-tab="pred">Predictions</button>
+  <button class="tab" data-tab="history">History</button>
 </div>
 
 <div class="panel active" id="standings">
@@ -140,6 +141,26 @@ svg text{fill:var(--muted)}
   </div>
 </div>
 
+<div class="panel" id="history">
+  <div class="card">
+    <div class="ctrl">
+      <button class="seg active" id="hsegA">H2H records</button>
+      <button class="seg" id="hsegB">Roto by season</button>
+      <span style="font-size:13px;color:var(--muted)">2021–present · regular season · by manager</span>
+    </div>
+    <div id="h2hsec">
+      <div class="note">All-time head-to-head between managers (deduped people). Cell = row manager's win% vs the column manager; hover for the W-L-T. Ranked by overall record.</div>
+      <div style="overflow-x:auto"><table id="h2hmx"></table></div>
+    </div>
+    <div id="rotosec" style="display:none">
+      <div class="ctrl"><label for="hyear">Season</label><select id="hyear"></select></div>
+      <div class="note">Weekly cumulative roto standings (regular season only), by manager.</div>
+      <div style="position:relative;height:380px"><canvas id="hroto"></canvas></div>
+      <div class="legend" id="hrleg"></div>
+    </div>
+  </div>
+</div>
+
 <div class="foot" id="foot"></div>
 </div>
 
@@ -177,6 +198,7 @@ const DASH = /*__DASH_DATA__*/null;
     document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
     document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===b.dataset.tab));
     if(b.dataset.tab==='roto'&&window.__rotoChart)window.__rotoChart.resize();
+    if(b.dataset.tab==='history'&&window.__hroto)window.__hroto.resize();
   });
 
   // ---------- Standings (two sortable tables) ----------
@@ -416,6 +438,46 @@ const DASH = /*__DASH_DATA__*/null;
       document.getElementById('prednote').textContent='Win probability if these rosters played a neutral week (most categories wins the matchup). Rows beat columns; click a cell for the breakdown. Based on 11 weeks; extremes lightly smoothed.';
       matrix(lam);drill();}
     lamEl.oninput=refresh;refresh();
+  })();
+
+  // ---------- History (all-time, by manager) ----------
+  (function(){
+    const H=DASH.history; if(!H||!H.managers)return;
+    const ME='Shane Simon',MGR=H.managers,colM={};MGR.forEach(m=>colM[m.name]=m.color);
+    const short=n=>{const p=n.split(' ');return p.length>1?p[0]+' '+p[p.length-1][0]+'.':n;};
+    (function(){
+      const order=MGR.map(m=>m.name);
+      let h='<tr><th class="lbl" style="color:var(--faint)">row vs col</th>';
+      order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th></tr>';
+      MGR.forEach((m,ri)=>{const a=m.name;
+        h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+colM[a]+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
+        order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
+          const rec=(H.h2h[a]||{})[b];
+          if(!rec){h+='<td style="color:var(--faint)">–</td>';return;}
+          const g=rec[0]+rec[1]+rec[2],p=g?rec[0]/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
+          h+='<td title="'+esc(a)+' vs '+esc(b)+'  '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
+        h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td>';});
+      document.getElementById('h2hmx').innerHTML=h;
+    })();
+    let rc=null;
+    function rotoYear(y){const rt=H.roto[String(y)];if(!rt)return;
+      const names=Object.keys(rt.byWeek).sort((a,b)=>rt.byWeek[a][rt.byWeek[a].length-1]-rt.byWeek[b][rt.byWeek[b].length-1]);
+      const ds=names.map(nm=>({label:nm,data:rt.byWeek[nm],borderColor:colM[nm]||'#888780',backgroundColor:colM[nm]||'#888780',tension:.25,pointRadius:0,pointHoverRadius:5,borderWidth:nm===ME?4:1.8}));
+      if(rc)rc.destroy();
+      rc=new Chart(document.getElementById('hroto'),{type:'line',data:{labels:rt.weeks,datasets:ds},
+        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
+          scales:{y:{reverse:true,min:1,max:12,ticks:{stepSize:1}},x:{title:{display:true,text:'Week'}}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': #'+c.parsed.y}}}}});
+      window.__hroto=rc;
+      const leg=document.getElementById('hrleg');leg.innerHTML='';
+      names.forEach(nm=>{leg.innerHTML+='<span class="chip" style="cursor:default"><span class="sw" style="background:'+(colM[nm]||'#888780')+'"></span>'+esc(nm)+' (#'+rt.byWeek[nm][rt.byWeek[nm].length-1]+')</span>';});
+    }
+    const ys=document.getElementById('hyear');H.seasons.forEach(y=>ys.add(new Option(y,y)));
+    ys.value=H.seasons[H.seasons.length-1];ys.onchange=()=>rotoYear(ys.value);
+    const A=document.getElementById('hsegA'),B=document.getElementById('hsegB');
+    A.onclick=()=>{A.classList.add('active');B.classList.remove('active');document.getElementById('h2hsec').style.display='';document.getElementById('rotosec').style.display='none';};
+    B.onclick=()=>{B.classList.add('active');A.classList.remove('active');document.getElementById('h2hsec').style.display='none';document.getElementById('rotosec').style.display='';if(window.__hroto)window.__hroto.resize();};
+    rotoYear(ys.value);
   })();
 })();
 </script>

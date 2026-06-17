@@ -20,6 +20,8 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
+import history
+
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
 DIST = ROOT / "dist"
@@ -234,6 +236,7 @@ def main():
         "rotoRankByWeek": {by_name(t): roto_rank[t] for t in tids},
         "rotoPointsLast": {by_name(t): roto_points_last[t] for t in tids},
         "weeklyValues": weekly_values,
+        "history": history.build(COOKIES, LEAGUE_ID),
     }
 
     (DIST / "dashboard_data.json").write_text(json.dumps(dash, separators=(",", ":")))
