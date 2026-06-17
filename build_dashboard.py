@@ -55,7 +55,7 @@ ROTO_CATS = [("R", True), ("HR", True), ("RBI", True), ("SB", True), ("AVG", Tru
 def fetch():
     r = requests.get(BASE, cookies=COOKIES,
                      params=[("view", "mMatchupScore"), ("view", "mMatchup"),
-                             ("view", "mTeam"), ("view", "mStandings")])
+                             ("view", "mTeam"), ("view", "mStandings"), ("view", "mRoster")])
     r.raise_for_status()
     return r.json()
 
@@ -190,16 +190,45 @@ def main():
         })
     h2h.sort(key=lambda x: (x["rank"] if x["rank"] is not None else 99))
 
+    # Rostered players -> Wubbies (R+RBI) & HAGS (SB+HR) from season stats
+    POS = {1: "SP", 2: "C", 3: "1B", 4: "2B", 5: "3B", 6: "SS", 7: "LF",
+           8: "CF", 9: "RF", 10: "DH", 11: "RP", 12: "UT"}
+
+    def season_stats(pl):
+        for s in pl.get("stats", []):
+            if (s.get("statSourceId") == 0 and s.get("statSplitTypeId") == 0
+                    and str(s.get("seasonId")) == str(SEASON)):
+                return s.get("stats", {})
+        return {}
+
+    rosters = {}
+    for rt in data.get("teams", []):
+        plist = []
+        for e in (rt.get("roster") or {}).get("entries", []):
+            pl = (e.get("playerPoolEntry") or {}).get("player") or {}
+            st = season_stats(pl)
+            r, rbi = int(st.get("20", 0) or 0), int(st.get("21", 0) or 0)
+            sb, hr = int(st.get("23", 0) or 0), int(st.get("5", 0) or 0)
+            w, h = r + rbi, sb + hr
+            if w > 0 or h > 0:  # hitters only (pitchers are 0/0)
+                plist.append({"n": pl.get("fullName", "?"),
+                              "pos": POS.get(pl.get("defaultPositionId"), "?"),
+                              "w": w, "h": h})
+        plist.sort(key=lambda p: -p["w"])
+        rosters[meta[rt["id"]]["name"]] = plist
+
     dash = {
         "meta": {
             "league": "Sandlot", "leagueId": int(LEAGUE_ID), "season": int(SEASON),
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "month": datetime.datetime.now().month,
             "weeks": weeks, "completedThrough": weeks[-1],
             "cats": CATS, "lowerBetter": LOWER_BETTER,
         },
         "teams": [{"name": meta[t]["name"], "abbrev": meta[t]["abbrev"], "color": meta[t]["color"]}
                   for t in standings],
         "standings": h2h,
+        "rosters": rosters,
         "records": {by_name(t): {"o": overall[t], "r": {c: records[t][c] for c in CATS}}
                     for t in tids},
         "rotoRankByWeek": {by_name(t): roto_rank[t] for t in tids},
