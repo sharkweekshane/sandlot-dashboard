@@ -457,9 +457,9 @@ const DASH = /*__DASH_DATA__*/null;
         order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
           const rec=(H.h2h[a]||{})[b];
           if(!rec){h+='<td style="color:var(--faint)">–</td>';return;}
-          const g=rec[0]+rec[1]+rec[2],p=g?rec[0]/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
+          const g=rec[0]+rec[1]+rec[2],p=g?(rec[0]+0.5*rec[2])/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
           h+='<td title="'+esc(a)+' vs '+esc(b)+'  '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
-        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?(m.W/tg).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.seasons.join(', ')+'">'+m.seasons.length+'</td>';});
+        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?((m.W+0.5*m.T)/tg).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.seasons.join(', ')+'">'+m.seasons.length+'</td>';});
       document.getElementById('h2hmx').innerHTML=h;
     })();
     let rc=null;
