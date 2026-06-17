@@ -150,9 +150,10 @@ svg text{fill:var(--muted)}
       <button class="seg" id="hsegB">Roto by season</button>
       <span id="hspan" style="font-size:13px;color:var(--muted)"></span>
     </div>
-    <div id="h2hsec">
+    <div id="h2hsec" style="position:relative">
       <div class="note">All-time head-to-head between managers (deduped people). Cell = row manager's win% vs the column manager; hover for the W-L-T. Ranked by overall record.</div>
       <div style="overflow-x:auto"><table id="h2hmx"></table></div>
+      <div id="htip" class="tip"></div>
     </div>
     <div id="rotosec" style="display:none">
       <div class="ctrl"><label for="hyear">Season</label><select id="hyear"></select></div>
@@ -458,9 +459,15 @@ const DASH = /*__DASH_DATA__*/null;
           const rec=(H.h2h[a]||{})[b];
           if(!rec){h+='<td style="color:var(--faint)">–</td>';return;}
           const g=rec[0]+rec[1]+rec[2],p=g?(rec[0]+0.5*rec[2])/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
-          h+='<td title="'+esc(a)+' vs '+esc(b)+'  '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
+          h+='<td class="hc" data-t="'+esc(a)+' vs '+esc(b)+': '+rec[0]+'-'+rec[1]+'-'+rec[2]+' ('+Math.round(p*100)+'%)" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
         const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?((m.W+0.5*m.T)/tg).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.seasons.join(', ')+'">'+m.seasons.length+'</td>';});
       document.getElementById('h2hmx').innerHTML=h;
+      const sec=document.getElementById('h2hsec'),tip=document.getElementById('htip');
+      sec.onmousemove=e=>{const c=e.target.closest('.hc');if(!c){tip.style.opacity=0;return;}
+        tip.textContent=c.dataset.t;tip.style.opacity=1;const r=sec.getBoundingClientRect();
+        let x=e.clientX-r.left+14;if(x+tip.offsetWidth>r.width)x=e.clientX-r.left-tip.offsetWidth-14;
+        tip.style.left=x+'px';tip.style.top=(e.clientY-r.top+14)+'px';};
+      sec.onmouseleave=()=>{tip.style.opacity=0;};
     })();
     let rc=null;
     function rotoYear(y){const rt=H.roto[String(y)];if(!rt)return;
