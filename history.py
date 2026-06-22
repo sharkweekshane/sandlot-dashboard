@@ -18,8 +18,13 @@ CANON = {
     "les fishers": "Michael Fisher", "espnfan3508595072": "Michael Fisher",
 }
 
-# Per-season corrections: (year, displayName) -> who really ran that team that year.
-SEASON_OVERRIDE = {(2017, "shane_ubc"): "Josh Cagan"}
+# Per-season corrections: (year, name) -> who really ran that team that year.
+# The name key may be the ESPN displayName OR the resolved person name (handy
+# when the account's real name is already correct every year except one).
+SEASON_OVERRIDE = {
+    (2017, "shane_ubc"): "Josh Cagan",        # the shane_ubc account was Josh in 2017
+    (2017, "Devin Lightman"): "Ari Geller",   # Devin didn't play in 2017 — Ari Geller ran his slot
+}
 
 # component statId map (same as the main build)
 COMP = {"AB": 0, "H": 1, "HR": 5, "BB": 10, "HBP": 12, "SF": 13, "R": 20,
@@ -72,8 +77,10 @@ def managers(data, year):
         m = members.get(pid)
         if m:
             dn = m.get("displayName")
+            resolved = CANON.get(dn) or clean(m.get("firstName"), m.get("lastName"))
             out[t["id"]] = (SEASON_OVERRIDE.get((year, dn))
-                            or CANON.get(dn) or clean(m.get("firstName"), m.get("lastName")))
+                            or SEASON_OVERRIDE.get((year, resolved))
+                            or resolved)
         else:
             out[t["id"]] = None
     return out
@@ -168,13 +175,17 @@ def data_team_name(data, tid):
 
 
 def build(cookies, league_id):
-    h2h = {}          # mgrA -> mgrB -> [W,L,T]
+    h2h = {}          # mgrA -> mgrB -> [W,L,T]  (all-time)
+    h2h_year = {}     # season(str) -> mgrA -> mgrB -> [W,L,T]  (per-season, for the slider)
     seen = {}         # manager -> set of seasons
     roto = {}
+    roto_pts = {}     # manager -> [normalized end-of-season roto points], completed seasons
+    roto_fin = {}     # manager -> {season(str): final roto rank}
 
     def add(a, b, res):
-        rec = h2h.setdefault(a, {}).setdefault(b, [0, 0, 0])
-        rec[{"W": 0, "L": 1, "T": 2}[res]] += 1
+        i = {"W": 0, "L": 1, "T": 2}[res]
+        h2h.setdefault(a, {}).setdefault(b, [0, 0, 0])[i] += 1
+        h2h_year.setdefault(str(yr), {}).setdefault(a, {}).setdefault(b, [0, 0, 0])[i] += 1
 
     for yr in SEASONS:
         try:
@@ -210,6 +221,13 @@ def build(cookies, league_id):
         rt = season_roto(data, rw, mgr, roto_cats(data))
         if rt:
             roto[str(yr)] = rt
+            if len(rt["weeks"]) >= rw:  # completed season -> end-of-year finish counts
+                ranks = {nm: rt["byWeek"][nm][-1] for nm in rt["byWeek"]}
+                N = len(ranks)
+                for nm, rk in ranks.items():
+                    if nm in seen:  # real managers only (skip vacant team labels)
+                        roto_pts.setdefault(nm, []).append(12 - (rk - 1) * 11 / (N - 1) if N > 1 else 12)
+                        roto_fin.setdefault(nm, {})[str(yr)] = rk
 
     # manager summaries + colors
     mlist = sorted(seen)
@@ -234,9 +252,18 @@ def build(cookies, league_id):
     } for a in mlist]
     managers_out.sort(key=lambda m: (-((m["W"] + 0.5 * m["T"]) / ((m["W"] + m["L"] + m["T"]) or 1)), -m["W"]))
 
+    roto_rankings = [{
+        "name": nm, "avg": round(sum(p) / len(p), 2), "seasons": len(p),
+        "titles": sum(1 for r in roto_fin[nm].values() if r == 1),
+        "finishes": roto_fin[nm],
+    } for nm, p in roto_pts.items()]
+    roto_rankings.sort(key=lambda r: (-r["avg"], -r["seasons"]))
+
     return {
         "seasons": [y for y in SEASONS if str(y) in roto] or SEASONS,
         "managers": managers_out,
         "h2h": h2h,
+        "h2hByYear": h2h_year,
         "roto": roto,
+        "rotoRankings": roto_rankings,
     }

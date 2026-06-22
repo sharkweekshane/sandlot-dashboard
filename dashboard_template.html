@@ -24,6 +24,7 @@ th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
 th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n,th.n{text-align:right}
 select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px}
+input[type=range]{accent-color:var(--accent);cursor:pointer;max-width:240px}
 label{font-size:13px;color:var(--muted)}
 .ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .chip{display:flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;background:var(--card)}
@@ -148,10 +149,12 @@ svg text{fill:var(--muted)}
     <div class="ctrl">
       <button class="seg active" id="hsegA">H2H records</button>
       <button class="seg" id="hsegB">Roto by season</button>
+      <button class="seg" id="hsegC">Roto rankings</button>
       <span id="hspan" style="font-size:13px;color:var(--muted)"></span>
     </div>
     <div id="h2hsec" style="position:relative">
-      <div class="note">All-time head-to-head between managers (deduped people). Cell = row manager's win% vs the column manager; hover for the W-L-T. Ranked by overall record.</div>
+      <div class="note">Head-to-head between managers (deduped people). Cell = row manager's win% vs the column manager; hover for the W-L-T. Ranked by record over the selected span.</div>
+      <div class="ctrl"><label for="h2hfrom">From season</label><input type="range" id="h2hfrom" step="1"><span id="h2hfromlbl" style="font-size:13px;color:var(--muted)"></span></div>
       <div style="overflow-x:auto"><table id="h2hmx"></table></div>
       <div id="htip" class="tip"></div>
     </div>
@@ -160,6 +163,10 @@ svg text{fill:var(--muted)}
       <div class="note">Weekly cumulative roto standings (regular season only), by manager.</div>
       <div style="position:relative;height:380px"><canvas id="hroto"></canvas></div>
       <div class="legend" id="hrleg"></div>
+    </div>
+    <div id="rrsec" style="display:none">
+      <div class="note">All-time roto rankings: each completed season the roto winner scores 12 down to 1 for last (scaled for 8/10/12-team years), averaged across the seasons each manager finished — so more years doesn't help or hurt. Hover Seasons for the year-by-year finishes.</div>
+      <table id="rrtbl" style="max-width:560px"></table>
     </div>
   </div>
 </div>
@@ -449,25 +456,49 @@ const DASH = /*__DASH_DATA__*/null;
     const ME='Shane Simon',MGR=H.managers,colM={};MGR.forEach(m=>colM[m.name]=m.color);
     document.getElementById('hspan').textContent=H.seasons[0]+'–present · regular season · by manager';
     const short=n=>{const p=n.split(' ');return p.length>1?p[0]+' '+p[p.length-1][0]+'.':n;};
-    (function(){
-      const order=MGR.map(m=>m.name);
+    const pctOf=r=>{const g=r.W+r.L+r.T;return g?(r.W+0.5*r.T)/g:0;};
+    // Aggregate H2H over seasons >= startYear, then rank + render the matrix.
+    function renderMatrix(startYear){
+      const HY=H.h2hByYear||{},agg={};
+      Object.keys(HY).forEach(y=>{if(+y<startYear)return;const yd=HY[y];
+        for(const a in yd)for(const b in yd[a]){const r=yd[a][b],
+          t=((agg[a]=agg[a]||{})[b]=agg[a][b]||[0,0,0]);t[0]+=r[0];t[1]+=r[1];t[2]+=r[2];}});
+      // managers active in the window, with window totals + tenure
+      const rows=MGR.filter(m=>m.seasons.some(s=>s>=startYear)).map(m=>{
+        let W=0,L=0,T=0;const ar=agg[m.name]||{};
+        for(const b in ar){W+=ar[b][0];L+=ar[b][1];T+=ar[b][2];}
+        const sin=m.seasons.filter(s=>s>=startYear);
+        return {name:m.name,W,L,T,yrs:sin.length,sin};});
+      rows.sort((x,y)=>(pctOf(y)-pctOf(x))||(y.W-x.W));
+      const order=rows.map(r=>r.name);
       let h='<tr><th class="lbl" style="color:var(--faint)">row vs col</th>';
       order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th><th>Win%</th><th>Yrs</th></tr>';
-      MGR.forEach((m,ri)=>{const a=m.name;
-        h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+colM[a]+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
+      rows.forEach((m,ri)=>{const a=m.name;
+        h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+(colM[a]||'#888780')+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
         order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
-          const rec=(H.h2h[a]||{})[b];
-          if(!rec){h+='<td style="color:var(--faint)">–</td>';return;}
-          const g=rec[0]+rec[1]+rec[2],p=g?(rec[0]+0.5*rec[2])/g:.5,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
+          const rec=(agg[a]||{})[b];
+          if(!rec||rec[0]+rec[1]+rec[2]===0){h+='<td style="color:var(--faint)">–</td>';return;}
+          const g=rec[0]+rec[1]+rec[2],p=(rec[0]+0.5*rec[2])/g,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
           h+='<td class="hc" data-t="'+esc(a)+' vs '+esc(b)+': '+rec[0]+'-'+rec[1]+'-'+rec[2]+' ('+Math.round(p*100)+'%)" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
-        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?((m.W+0.5*m.T)/tg).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.seasons.join(', ')+'">'+m.seasons.length+'</td>';});
+        const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?pctOf(m).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.sin.join(', ')+'">'+m.yrs+'</td>';});
       document.getElementById('h2hmx').innerHTML=h;
+    }
+    (function(){
       const sec=document.getElementById('h2hsec'),tip=document.getElementById('htip');
       sec.onmousemove=e=>{const c=e.target.closest('.hc');if(!c){tip.style.opacity=0;return;}
         tip.textContent=c.dataset.t;tip.style.opacity=1;const r=sec.getBoundingClientRect();
         let x=e.clientX-r.left+14;if(x+tip.offsetWidth>r.width)x=e.clientX-r.left-tip.offsetWidth-14;
         tip.style.left=x+'px';tip.style.top=(e.clientY-r.top+14)+'px';};
       sec.onmouseleave=()=>{tip.style.opacity=0;};
+      // year slider: pick the start season (window runs startYear..present)
+      const ya=Object.keys(H.h2hByYear||{}).map(Number).sort((a,b)=>a-b),
+        yMin=ya[0],yMax=ya[ya.length-1],
+        el=document.getElementById('h2hfrom'),lbl=document.getElementById('h2hfromlbl');
+      el.min=yMin;el.max=yMax;el.value=yMin;
+      const upd=()=>{const sy=+el.value;
+        lbl.textContent=sy===yMin?('all-time · '+yMin+'–'+yMax):sy===yMax?(yMax+' only'):(sy+'–'+yMax);
+        renderMatrix(sy);};
+      el.oninput=upd;upd();
     })();
     let rc=null;
     function rotoYear(y){const rt=H.roto[String(y)];if(!rt)return;
@@ -484,9 +515,13 @@ const DASH = /*__DASH_DATA__*/null;
     }
     const ys=document.getElementById('hyear');H.seasons.forEach(y=>ys.add(new Option(y,y)));
     ys.value=H.seasons[H.seasons.length-1];ys.onchange=()=>rotoYear(ys.value);
-    const A=document.getElementById('hsegA'),B=document.getElementById('hsegB');
-    A.onclick=()=>{A.classList.add('active');B.classList.remove('active');document.getElementById('h2hsec').style.display='';document.getElementById('rotosec').style.display='none';};
-    B.onclick=()=>{B.classList.add('active');A.classList.remove('active');document.getElementById('h2hsec').style.display='none';document.getElementById('rotosec').style.display='';if(window.__hroto)window.__hroto.resize();};
+    const segs=[['hsegA','h2hsec'],['hsegB','rotosec'],['hsegC','rrsec']];
+    function showSeg(id){segs.forEach(([bid,sid])=>{const on=bid===id;document.getElementById(bid).classList.toggle('active',on);document.getElementById(sid).style.display=on?'':'none';});if(id==='hsegB'&&window.__hroto)window.__hroto.resize();}
+    segs.forEach(([bid])=>document.getElementById(bid).onclick=()=>showSeg(bid));
+    (function(){const RR=H.rotoRankings||[];
+      let h='<tr><th>#</th><th>Manager</th><th class="n">Roto pts/yr</th><th class="n">Titles</th><th class="n">Seasons</th></tr>';
+      RR.forEach((m,i)=>{h+='<tr><td>'+(i+1)+'</td><td><span class="sw" style="display:inline-block;background:'+(colM[m.name]||'#888780')+';margin-right:7px"></span>'+esc(m.name)+'</td><td class="n" style="font-weight:600">'+m.avg.toFixed(2)+'</td><td class="n">'+m.titles+'</td><td class="n" title="'+Object.entries(m.finishes).map(([y,r])=>y+': #'+r).join(', ')+'">'+m.seasons+'</td></tr>';});
+      document.getElementById('rrtbl').innerHTML=h;})();
     rotoYear(ys.value);
   })();
 })();
