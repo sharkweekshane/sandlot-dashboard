@@ -193,9 +193,12 @@ def main():
         })
     h2h.sort(key=lambda x: (x["rank"] if x["rank"] is not None else 99))
 
-    # Rostered players -> Wubbies (R+RBI) & HAGS (SB+HR) from season stats
+    # Rostered players -> custom stats (hitters + pitchers) from season stats.
+    # Wubbies=R+RBI, HAGS=SB+HR, Ks=K, Horse=QS+W; Ratio King=(AVG+OBP)/2,
+    # Pitching Rash=(ERA+WHIP)/2 (ratios only when the player has cleared a min sample).
     POS = {1: "SP", 2: "C", 3: "1B", 4: "2B", 5: "3B", 6: "SS", 7: "LF",
            8: "CF", 9: "RF", 10: "DH", 11: "RP", 12: "UT"}
+    MIN_AB, MIN_OUTS = 75, 90  # qualifiers for the ratio metrics
 
     def season_stats(pl):
         for s in pl.get("stats", []):
@@ -204,20 +207,31 @@ def main():
                 return s.get("stats", {})
         return {}
 
+    def num(st, k):
+        return float(st.get(str(k), 0) or 0)
+
     rosters = {}
     for rt in data.get("teams", []):
         plist = []
         for e in (rt.get("roster") or {}).get("entries", []):
             pl = (e.get("playerPoolEntry") or {}).get("player") or {}
             st = season_stats(pl)
-            r, rbi = int(st.get("20", 0) or 0), int(st.get("21", 0) or 0)
-            sb, hr = int(st.get("23", 0) or 0), int(st.get("5", 0) or 0)
-            w, h = r + rbi, sb + hr
-            if w > 0 or h > 0:  # hitters only (pitchers are 0/0)
-                plist.append({"n": pl.get("fullName", "?"),
-                              "pos": POS.get(pl.get("defaultPositionId"), "?"),
-                              "w": w, "h": h})
-        plist.sort(key=lambda p: -p["w"])
+            ab, h1, bb, hbp, sf = num(st, 0), num(st, 1), num(st, 10), num(st, 12), num(st, 13)
+            r, rbi, sb, hr = num(st, 20), num(st, 21), num(st, 23), num(st, 5)
+            outs, er, ph, pbb = num(st, 34), num(st, 45), num(st, 37), num(st, 39)
+            p = {"n": pl.get("fullName", "?"),
+                 "pos": POS.get(pl.get("defaultPositionId"), "?"),
+                 "w": int(r + rbi), "h": int(sb + hr),
+                 "ks": int(num(st, 48)), "ho": int(num(st, 63) + num(st, 53))}
+            if ab >= MIN_AB:
+                obpd = ab + bb + hbp + sf
+                p["rk"] = round((h1 / ab + ((h1 + bb + hbp) / obpd if obpd else 0)) / 2, 4)
+            if outs >= MIN_OUTS:
+                ip = outs / 3.0
+                p["pr"] = round((9 * er / ip + (ph + pbb) / ip) / 2, 4)
+            if p["w"] or p["h"] or p["ks"] or p["ho"] or "rk" in p or "pr" in p:
+                plist.append(p)
+        plist.sort(key=lambda x: -x["w"])
         rosters[meta[rt["id"]]["name"]] = plist
 
     now_et = datetime.datetime.now(ZoneInfo("America/New_York"))

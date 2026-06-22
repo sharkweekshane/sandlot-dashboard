@@ -118,8 +118,8 @@ svg text{fill:var(--muted)}
 <div class="panel" id="wh">
   <div class="card">
     <div class="ctrl">
-      <button class="seg active" id="segW">Wubbies · R+RBI</button>
-      <button class="seg" id="segH">HAGS · SB+HR</button>
+      <label for="whmetric" style="font-size:13px;color:var(--muted)">Stat</label>
+      <select id="whmetric"></select>
     </div>
     <div class="note" id="whnote"></div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Pick up to 3 teams:</div>
@@ -338,39 +338,57 @@ const DASH = /*__DASH_DATA__*/null;
       WUBBIES:[["April",10],["May",30],["June",60],["July",90],["August",120],["September",150],["October",180],["November",210]],
       HAGS:[["April",5],["May",10],["June",15],["July",20],["August",25],["September",30],["October",35],["November",40]]
     };
+    const METRICS={
+      WUBBIES:{label:'Wubbies (R+RBI)',key:'w',tier:true},
+      HAGS:{label:'HAGS (SB+HR)',key:'h',tier:true},
+      RK:{label:'Ratio King (AVG+OBP)',key:'rk',ratio:true,asc:false},
+      KS:{label:'Ks (strikeouts)',key:'ks',asc:false},
+      HORSE:{label:'Horse (QS+W)',key:'ho',asc:false},
+      PR:{label:'Pitching Rash (ERA+WHIP)',key:'pr',ratio:true,asc:true}
+    };
+    const DESC={WUBBIES:'Wubbies = runs + RBI',HAGS:'HAGS = stolen bases + home runs',
+      RK:'Ratio King = (AVG + OBP) / 2 · min 75 AB',KS:'Ks = season strikeouts',
+      HORSE:'Horse = quality starts + wins',PR:'Pitching Rash = (ERA + WHIP) / 2 · min 30 IP · lower is better'};
     const minIdx=Math.min(11,Math.max(4,M.month||6))-4;
     let metric='WUBBIES';
     const sel=new Set([TEAMS[0].name]);
     const tierOf=(m,v)=>{let i=-1;TIERS[m].forEach((tr,k)=>{if(v>=tr[1])i=k;});return i;};
     const range=(m,i)=>{const T=TIERS[m];return i===T.length-1?(T[i][1]+'+'):(T[i][1]+'–'+(T[i+1][1]-1));};
+    const fmtv=(M2,v)=>M2.ratio?(+v).toFixed(3).replace(/^0/,''):v;
+    const row=(r,val,rank)=>'<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">'
+      +(rank?'<span style="color:var(--faint);width:22px;font-size:12px">'+rank+'</span>':'')
+      +'<span class="sw" style="display:inline-block;background:'+colOf[r.team]+'"></span>'
+      +'<span style="flex:1">'+esc(r.n)+' <span style="color:var(--muted);font-size:12px">'+r.pos+' · '+abbrOf[r.team]+'</span></span>'
+      +'<span style="font-weight:600">'+val+'</span></div>';
     function out(){
-      const T=TIERS[metric],minT=T[minIdx][1];
-      document.getElementById('whnote').textContent=(metric==='WUBBIES'?'Wubbies = runs + RBI':'HAGS = stolen bases + home runs')+`. Minimum bar is the ${T[minIdx][0]} tier (≥${minT}) and ratchets up each month.`;
-      const o=document.getElementById('whout');
+      const M2=METRICS[metric],o=document.getElementById('whout');
+      document.getElementById('whnote').textContent=DESC[metric]+(M2.tier?'. Minimum bar is the '+TIERS[metric][minIdx][0]+' tier (≥'+TIERS[metric][minIdx][1]+') and ratchets up each month.':'');
       if(!sel.size){o.innerHTML='<div class="note">Select at least one team above.</div>';return;}
-      const rows=[];
-      [...sel].forEach(tn=>(DASH.rosters[tn]||[]).forEach(p=>{const v=metric==='WUBBIES'?p.w:p.h;if(v>=minT)rows.push({n:p.n,pos:p.pos,team:tn,v,ti:tierOf(metric,v)});}));
-      if(!rows.length){o.innerHTML='<div class="note">No players have cleared the '+T[minIdx][0]+' bar (≥'+minT+') yet.</div>';return;}
-      let html='';
-      for(let i=T.length-1;i>=minIdx;i--){
-        const grp=rows.filter(r=>r.ti===i).sort((a,b)=>b.v-a.v);
-        if(!grp.length)continue;
-        html+='<div style="display:flex;align-items:baseline;gap:8px;margin:14px 0 4px"><span style="font-size:15px;font-weight:600">'+T[i][0]+'</span><span style="font-size:12px;color:var(--muted)">'+range(metric,i)+' · '+grp.length+'</span></div>';
-        grp.forEach(r=>{html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">'
-          +'<span class="sw" style="display:inline-block;background:'+colOf[r.team]+'"></span>'
-          +'<span style="flex:1">'+esc(r.n)+' <span style="color:var(--muted);font-size:12px">'+r.pos+' · '+abbrOf[r.team]+'</span></span>'
-          +'<span style="font-weight:600">'+r.v+'</span></div>';});
+      if(M2.tier){
+        const T=TIERS[metric],minT=T[minIdx][1],rows=[];
+        [...sel].forEach(tn=>(DASH.rosters[tn]||[]).forEach(p=>{const v=p[M2.key];if(v>=minT)rows.push({n:p.n,pos:p.pos,team:tn,v,ti:tierOf(metric,v)});}));
+        if(!rows.length){o.innerHTML='<div class="note">No players have cleared the '+T[minIdx][0]+' bar (≥'+minT+') yet.</div>';return;}
+        let html='';
+        for(let i=T.length-1;i>=minIdx;i--){const grp=rows.filter(r=>r.ti===i).sort((a,b)=>b.v-a.v);if(!grp.length)continue;
+          html+='<div style="display:flex;align-items:baseline;gap:8px;margin:14px 0 4px"><span style="font-size:15px;font-weight:600">'+T[i][0]+'</span><span style="font-size:12px;color:var(--muted)">'+range(metric,i)+' · '+grp.length+'</span></div>';
+          grp.forEach(r=>{html+=row(r,r.v);});}
+        o.innerHTML=html;
+      } else {
+        const rows=[];
+        [...sel].forEach(tn=>(DASH.rosters[tn]||[]).forEach(p=>{const v=p[M2.key];if(v!=null&&(M2.ratio||v>0))rows.push({n:p.n,pos:p.pos,team:tn,v});}));
+        if(!rows.length){o.innerHTML='<div class="note">No qualifying players on the selected team(s).</div>';return;}
+        rows.sort((a,b)=>M2.asc?a.v-b.v:b.v-a.v);
+        o.innerHTML=rows.map((r,i)=>row(r,fmtv(M2,r.v),i+1)).join('');
       }
-      o.innerHTML=html;
     }
     const tc=document.getElementById('whteams');
     TEAMS.forEach(t=>{const c=document.createElement('span');c.className='chip'+(sel.has(t.name)?' on':'');c.dataset.t=t.name;
       c.innerHTML='<span class="sw" style="background:'+t.color+'"></span>'+esc(t.abbrev);
       c.onclick=()=>{if(sel.has(t.name))sel.delete(t.name);else{if(sel.size>=3)return;sel.add(t.name);}c.classList.toggle('on',sel.has(t.name));out();};
       tc.appendChild(c);});
-    const sW=document.getElementById('segW'),sH=document.getElementById('segH');
-    sW.onclick=()=>{metric='WUBBIES';sW.classList.add('active');sH.classList.remove('active');out();};
-    sH.onclick=()=>{metric='HAGS';sH.classList.add('active');sW.classList.remove('active');out();};
+    const ms=document.getElementById('whmetric');
+    Object.keys(METRICS).forEach(k=>ms.add(new Option(METRICS[k].label,k)));
+    ms.value='WUBBIES';ms.onchange=()=>{metric=ms.value;out();};
     out();
   })();
 
