@@ -11,6 +11,8 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
 .wrap{max-width:920px;margin:0 auto;padding:20px 18px 48px}
+header{display:flex;align-items:center;gap:14px}
+header img{height:72px;width:auto;border-radius:8px;border:1px solid var(--border)}
 header h1{font-size:22px;font-weight:600;margin:0}
 header .sub{color:var(--muted);font-size:14px;margin-top:4px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 16px;border-bottom:1px solid var(--border)}
@@ -66,13 +68,88 @@ th.srt:hover{color:var(--text)}
 svg text{fill:var(--muted)}
 .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .08s;z-index:9}
 .bphit{cursor:pointer}.bphit:hover{stroke:var(--text);stroke-width:1.2}
+
+/* ===================== MOBILE (≤600px) ===================== */
+@media (max-width:600px){
+  .wrap{max-width:100%;padding:14px 12px 40px;overflow-x:clip}
+  /* neutralize the desktop wide-breakout so panels never trigger page-wide scroll */
+  #history.active,#playoffs.active{width:auto;margin-left:0;transform:none}
+
+  header{gap:10px}
+  header img{height:48px;border-radius:6px}
+  header h1{font-size:18px;line-height:1.2}
+  header .sub{font-size:12px;margin-top:3px}
+
+  /* swipeable single-row tab bar */
+  .tabs{flex-wrap:nowrap;overflow-x:auto;gap:2px;margin:14px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;white-space:nowrap;padding:10px 12px}
+
+  .card{padding:14px 13px;border-radius:10px;margin-bottom:12px}
+  .note{font-size:12px}.ttl{font-size:14px}.foot{font-size:11px;margin-top:18px}
+
+  /* controls / tap targets */
+  .ctrl{gap:8px;margin-bottom:10px}
+  .chip{padding:9px 11px;font-size:13px}
+  .seg{padding:9px 13px;font-size:13px}
+  select{padding:9px 11px;font-size:14px}
+  input[type=range]{max-width:100%;width:100%;flex:1 1 140px;height:28px}
+  label{font-size:13px}.legend{gap:6px}
+
+  /* base non-matrix tables */
+  table{font-size:13px}
+  th,td{padding:8px 6px}
+  th{font-size:11px}
+
+  /* Standings: scroll + sticky # / Team columns */
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #h2htbl,#standtbl{font-size:12px}
+  #h2htbl th,#h2htbl td,#standtbl th,#standtbl td{padding:9px 7px;white-space:nowrap}
+  #h2htbl th:nth-child(1),#h2htbl td:nth-child(1),#standtbl th:nth-child(1),#standtbl td:nth-child(1){position:sticky;left:0;z-index:2;background:var(--card)}
+  #h2htbl th:nth-child(2),#h2htbl td:nth-child(2),#standtbl th:nth-child(2),#standtbl td:nth-child(2){position:sticky;left:30px;z-index:2;background:var(--card);box-shadow:1px 0 0 var(--border)}
+  #h2htbl td:nth-child(2) .sw,#standtbl td:nth-child(2) .sw{margin-right:5px}
+
+  /* Roto race chart: shorter so it isn't tall-and-thin */
+  #rtcbox{height:300px!important}
+
+  /* Category spreads box-plot: scroll instead of squishing 12 teams */
+  #bwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #bwrap svg{min-width:520px}
+  #btip{max-width:80vw;white-space:normal}
+
+  /* Team report + Wubbies/HAGS */
+  #tsel,#whmetric{flex:1 1 auto;min-width:150px;font-size:15px}
+  #tcard .row{grid-template-columns:44px 1fr 60px 38px;gap:7px}
+  #whteams{gap:8px}
+  #whteams .chip{font-size:13px;padding:9px 12px;min-height:40px}
+  #whteams .chip .sw{width:13px;height:13px}
+  #whout>div{padding:6px 0}
+
+  /* Predictions */
+  #predmx{min-width:560px}
+  #predmx td.lbl,#predmx th.lbl{position:sticky;left:0;z-index:2;background:var(--card);box-shadow:1px 0 0 var(--border);max-width:120px;overflow:hidden;text-overflow:ellipsis}
+  #predmx th.lbl{z-index:3}
+  #predmx td,#predmx th{padding:9px 6px}
+  .mxc{font-size:12px}.mxc:active{outline:2px solid var(--accent)}
+  #reclam{width:100%!important;max-width:none;flex:1 1 140px}
+  #pA,#pB{flex:1 1 40%;min-width:120px;min-height:40px}
+  .wtl{height:26px;font-size:11px}
+  #preddrill table td,#preddrill table th{padding:6px 5px;font-size:12px}
+
+  /* History + Playoffs matrices: sticky first column, bigger cells */
+  #h2hmx td.lbl,#h2hmx th.lbl,#pmx td.lbl,#pmx th.lbl{position:sticky;left:0;z-index:2;background:var(--card);box-shadow:1px 0 0 var(--border)}
+  #h2hmx td,#h2hmx th,#pmx td,#pmx th{padding:6px 6px}
+  #htip,#ptip{max-width:80vw;white-space:normal}
+
+  /* Playoff brackets */
+  .pbr{gap:12px}.pcol{min-width:150px}#poyears{gap:6px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header style="display:flex;align-items:center;gap:14px">
-  <img src="header.png" alt="The Sandlot" onerror="this.remove()"
-       style="height:72px;width:auto;border-radius:8px;border:1px solid var(--border)">
+<header>
+  <img src="header.png" alt="The Sandlot" onerror="this.remove()">
   <div>
     <h1>Sandlot — Roto &amp; Category Dashboard</h1>
     <div class="sub" id="sub"></div>
@@ -93,19 +170,19 @@ svg text{fill:var(--muted)}
   <div class="card">
     <div class="ttl">League standings — head-to-head</div>
     <div class="note">Official ESPN standings: most-categories matchup record. Click any column to sort.</div>
-    <table id="h2htbl"></table>
+    <div class="tscroll"><table id="h2htbl"></table></div>
   </div>
   <div class="card">
     <div class="ttl">Category-battle standings</div>
     <div class="note">Total weekly category wins (12 cats × weeks) vs each opponent, beside the all-play roto standing.</div>
-    <table id="standtbl"></table>
+    <div class="tscroll"><table id="standtbl"></table></div>
   </div>
 </div>
 
 <div class="panel" id="roto">
   <div class="card">
     <div class="ctrl"><span style="font-size:13px;color:var(--muted)">Click a team to trace it</span><button class="chip" id="rtall">Show all</button></div>
-    <div style="position:relative;height:380px"><canvas id="rtc"></canvas></div>
+    <div id="rtcbox" style="position:relative;height:380px"><canvas id="rtc"></canvas></div>
     <div class="legend" id="rtleg"></div>
   </div>
 </div>
@@ -244,6 +321,7 @@ const DASH = /*__DASH_DATA__*/null;
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
     document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===b.dataset.tab));
+    const tb=b.parentElement;if(tb.scrollWidth>tb.clientWidth)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
     if(b.dataset.tab==='roto'&&window.__rotoChart)window.__rotoChart.resize();
     if(b.dataset.tab==='history'&&window.__hroto)window.__hroto.resize();
   });
@@ -675,6 +753,21 @@ const DASH = /*__DASH_DATA__*/null;
 
     if(years.length)renderBracket(years[0]);
   })();
+
+  // ---------- Touch: tap matrix cells / box-plot dots to reveal hover-only tooltips ----------
+  ['h2hsec','pchsec'].forEach(id=>{const sec=document.getElementById(id);if(!sec)return;
+    const tip=sec.querySelector('.tip');if(!tip)return;
+    sec.addEventListener('click',e=>{const c=e.target.closest('.hc');if(!c){tip.style.opacity=0;return;}
+      tip.textContent=c.dataset.t;tip.style.opacity=1;const r=sec.getBoundingClientRect();
+      let x=e.clientX-r.left+14;if(x+tip.offsetWidth>r.width)x=e.clientX-r.left-tip.offsetWidth-14;
+      tip.style.left=x+'px';tip.style.top=(e.clientY-r.top+14)+'px';});});
+  (function(){const outer=document.getElementById('bouter'),tip=document.getElementById('btip');if(!outer||!tip)return;
+    outer.addEventListener('click',e=>{const c=e.target.closest('.bphit');if(!c){tip.style.opacity=0;return;}
+      const r=outer.getBoundingClientRect();
+      tip.innerHTML='<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+c.dataset.col+';margin-right:6px"></span><b>'+c.dataset.team+'</b><br><span style="color:var(--muted)">Week '+c.dataset.wk+' · '+c.dataset.cat+'</span>: '+c.dataset.val;
+      tip.style.opacity=1;let x=e.clientX-r.left+14,y=e.clientY-r.top+14;
+      if(x+tip.offsetWidth>r.width)x=e.clientX-r.left-tip.offsetWidth-14;if(y+tip.offsetHeight>r.height)y=e.clientY-r.top-tip.offsetHeight-14;
+      tip.style.left=x+'px';tip.style.top=y+'px';});})();
 })();
 </script>
 </body>
