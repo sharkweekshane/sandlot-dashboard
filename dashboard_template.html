@@ -122,7 +122,7 @@ svg text{fill:var(--muted)}
       <select id="whmetric"></select>
     </div>
     <div class="note" id="whnote"></div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Pick up to 3 teams:</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Pick teams (tap All for everyone):</div>
     <div id="whteams" class="legend" style="margin-bottom:8px"></div>
     <div id="whout"></div>
   </div>
@@ -344,11 +344,11 @@ const DASH = /*__DASH_DATA__*/null;
       RK:{label:'Ratio King (AVG+OBP)',key:'rk',ratio:true,asc:false},
       KS:{label:'Ks (strikeouts)',key:'ks',asc:false},
       HORSE:{label:'Horse (QS+W)',key:'ho',asc:false},
-      PR:{label:'Pitching Rash (ERA+WHIP)',key:'pr',ratio:true,asc:true}
+      PR:{label:'Pitching Rash (ERA+WHIP)',key:'pr',ratio:true,asc:true,posFilter:'SP'}
     };
     const DESC={WUBBIES:'Wubbies = runs + RBI',HAGS:'HAGS = stolen bases + home runs',
       RK:'Ratio King = (AVG + OBP) / 2 · min 75 AB',KS:'Ks = season strikeouts',
-      HORSE:'Horse = quality starts + wins',PR:'Pitching Rash = (ERA + WHIP) / 2 · min 30 IP · lower is better'};
+      HORSE:'Horse = quality starts + wins',PR:'Pitching Rash = (ERA + WHIP) / 2 · SP only · min 30 IP · lower is better'};
     const minIdx=Math.min(11,Math.max(4,M.month||6))-4;
     let metric='WUBBIES';
     const sel=new Set([TEAMS[0].name]);
@@ -375,17 +375,22 @@ const DASH = /*__DASH_DATA__*/null;
         o.innerHTML=html;
       } else {
         const rows=[];
-        [...sel].forEach(tn=>(DASH.rosters[tn]||[]).forEach(p=>{const v=p[M2.key];if(v!=null&&(M2.ratio||v>0))rows.push({n:p.n,pos:p.pos,team:tn,v});}));
+        [...sel].forEach(tn=>(DASH.rosters[tn]||[]).forEach(p=>{const v=p[M2.key];if(v!=null&&(M2.ratio||v>0)&&(!M2.posFilter||p.pos===M2.posFilter))rows.push({n:p.n,pos:p.pos,team:tn,v});}));
         if(!rows.length){o.innerHTML='<div class="note">No qualifying players on the selected team(s).</div>';return;}
         rows.sort((a,b)=>M2.asc?a.v-b.v:b.v-a.v);
         o.innerHTML=rows.map((r,i)=>row(r,fmtv(M2,r.v),i+1)).join('');
       }
     }
     const tc=document.getElementById('whteams');
-    TEAMS.forEach(t=>{const c=document.createElement('span');c.className='chip'+(sel.has(t.name)?' on':'');c.dataset.t=t.name;
+    const allc=document.createElement('span');allc.className='chip';allc.style.fontWeight='500';allc.textContent='All';
+    allc.onclick=()=>{const allOn=sel.size>=TEAMS.length;sel.clear();if(allOn)sel.add(TEAMS[0].name);else TEAMS.forEach(t=>sel.add(t.name));sync();out();};
+    tc.appendChild(allc);
+    TEAMS.forEach(t=>{const c=document.createElement('span');c.className='chip';c.dataset.t=t.name;
       c.innerHTML='<span class="sw" style="background:'+t.color+'"></span>'+esc(t.abbrev);
-      c.onclick=()=>{if(sel.has(t.name))sel.delete(t.name);else{if(sel.size>=3)return;sel.add(t.name);}c.classList.toggle('on',sel.has(t.name));out();};
+      c.onclick=()=>{if(sel.has(t.name))sel.delete(t.name);else sel.add(t.name);sync();out();};
       tc.appendChild(c);});
+    function sync(){allc.classList.toggle('on',sel.size>=TEAMS.length);tc.querySelectorAll('.chip[data-t]').forEach(c=>c.classList.toggle('on',sel.has(c.dataset.t)));}
+    sync();
     const ms=document.getElementById('whmetric');
     Object.keys(METRICS).forEach(k=>ms.add(new Option(METRICS[k].label,k)));
     ms.value='WUBBIES';ms.onchange=()=>{metric=ms.value;out();};
@@ -537,7 +542,7 @@ const DASH = /*__DASH_DATA__*/null;
     function showSeg(id){segs.forEach(([bid,sid])=>{const on=bid===id;document.getElementById(bid).classList.toggle('active',on);document.getElementById(sid).style.display=on?'':'none';});if(id==='hsegB'&&window.__hroto)window.__hroto.resize();}
     segs.forEach(([bid])=>document.getElementById(bid).onclick=()=>showSeg(bid));
     (function(){const RR=H.rotoRankings||[];
-      let h='<tr><th>#</th><th>Manager</th><th class="n">Roto pts/yr</th><th class="n">Titles</th><th class="n">Seasons</th></tr>';
+      let h='<tr><th>#</th><th>Manager</th><th class="n">Roto pts/yr</th><th class="n">Roto titles</th><th class="n">Seasons</th></tr>';
       RR.forEach((m,i)=>{h+='<tr><td>'+(i+1)+'</td><td><span class="sw" style="display:inline-block;background:'+(colM[m.name]||'#888780')+';margin-right:7px"></span>'+esc(m.name)+'</td><td class="n" style="font-weight:600">'+m.avg.toFixed(2)+'</td><td class="n">'+m.titles+'</td><td class="n" title="'+Object.entries(m.finishes).map(([y,r])=>y+': #'+r).join(', ')+'">'+m.seasons+'</td></tr>';});
       document.getElementById('rrtbl').innerHTML=h;})();
     rotoYear(ys.value);

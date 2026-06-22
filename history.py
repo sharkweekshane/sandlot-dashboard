@@ -179,8 +179,9 @@ def build(cookies, league_id):
     h2h_year = {}     # season(str) -> mgrA -> mgrB -> [W,L,T]  (per-season, for the slider)
     seen = {}         # manager -> set of seasons
     roto = {}
-    roto_pts = {}     # manager -> [normalized end-of-season roto points], completed seasons
-    roto_fin = {}     # manager -> {season(str): final roto rank}
+    roto_pts = {}     # manager -> [normalized roto points per season played]
+    roto_fin = {}     # manager -> {season(str): final/current roto rank}
+    roto_titles = {}  # manager -> count of completed-season roto championships
 
     def add(a, b, res):
         i = {"W": 0, "L": 1, "T": 2}[res]
@@ -221,13 +222,15 @@ def build(cookies, league_id):
         rt = season_roto(data, rw, mgr, roto_cats(data))
         if rt:
             roto[str(yr)] = rt
-            if len(rt["weeks"]) >= rw:  # completed season -> end-of-year finish counts
-                ranks = {nm: rt["byWeek"][nm][-1] for nm in rt["byWeek"]}
-                N = len(ranks)
-                for nm, rk in ranks.items():
-                    if nm in seen:  # real managers only (skip vacant team labels)
-                        roto_pts.setdefault(nm, []).append(12 - (rk - 1) * 11 / (N - 1) if N > 1 else 12)
-                        roto_fin.setdefault(nm, {})[str(yr)] = rk
+            ranks = {nm: rt["byWeek"][nm][-1] for nm in rt["byWeek"]}
+            N = len(ranks)
+            done = len(rt["weeks"]) >= rw  # season fully played (vs in-progress)
+            for nm, rk in ranks.items():
+                if nm in seen:  # real managers only (skip vacant team labels)
+                    roto_pts.setdefault(nm, []).append(12 - (rk - 1) * 11 / (N - 1) if N > 1 else 12)
+                    roto_fin.setdefault(nm, {})[str(yr)] = rk
+                    if done and rk == 1:
+                        roto_titles[nm] = roto_titles.get(nm, 0) + 1
 
     # manager summaries + colors
     mlist = sorted(seen)
@@ -254,7 +257,7 @@ def build(cookies, league_id):
 
     roto_rankings = [{
         "name": nm, "avg": round(sum(p) / len(p), 2), "seasons": len(p),
-        "titles": sum(1 for r in roto_fin[nm].values() if r == 1),
+        "titles": roto_titles.get(nm, 0),
         "finishes": roto_fin[nm],
     } for nm, p in roto_pts.items()]
     roto_rankings.sort(key=lambda r: (-r["avg"], -r["seasons"]))
