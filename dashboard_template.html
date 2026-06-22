@@ -200,6 +200,7 @@ svg text{fill:var(--muted)}
     <div id="pchsec" style="display:none;position:relative">
       <div class="note">All-time playoff results. <b>Titles</b> = championships · <b>Byes</b> = first-round byes (earned as a top-2 seed) · <b>Apps</b> = seasons reaching the 6-team bracket · <b>Record</b> = wins-losses in bracket games.</div>
       <table id="ptbl" style="max-width:660px"></table>
+      <div id="pnote" class="note" style="margin-top:8px;font-size:12px"></div>
       <div class="note" style="margin-top:20px">Playoff head-to-head — bracket games only. Cell = row manager beat the column manager; hover for the W-L-T.</div>
       <div style="overflow-x:auto"><table id="pmx"></table></div>
       <div id="ptip" class="tip"></div>
@@ -632,13 +633,15 @@ const DASH = /*__DASH_DATA__*/null;
     (function(){
       const pctOf=m=>{const g=m.W+m.L+m.T;return g?(m.W+0.5*m.T)/g:0;};
       let h='<tr><th>#</th><th>Manager</th><th class="n">🏆</th><th class="n">Byes</th><th class="n">Apps</th><th class="n">Record</th><th class="n">Win%</th></tr>';
-      PS.forEach((m,i)=>{const g=m.W+m.L+m.T;
+      PS.forEach((m,i)=>{const g=m.W+m.L+m.T,star=(m.extra&&m.extra.length)?'<sup>*</sup>':'';
         h+='<tr><td>'+(i+1)+'</td><td>'+sw(m.name)+esc(m.name)+'</td>'
-          +'<td class="n" style="font-weight:600">'+(m.champs||'–')+'</td>'
+          +'<td class="n" style="font-weight:600">'+(m.champs||'–')+star+'</td>'
           +'<td class="n">'+(m.byes||'–')+'</td><td class="n">'+m.app+'</td>'
           +'<td class="n">'+m.W+'-'+m.L+(m.T?'-'+m.T:'')+'</td>'
           +'<td class="n">'+(g?pctOf(m).toFixed(3).replace(/^0/,''):'—')+'</td></tr>';});
       document.getElementById('ptbl').innerHTML=h;
+      const ex=PS.filter(m=>m.extra&&m.extra.length);
+      document.getElementById('pnote').innerHTML=ex.map(m=>'* '+esc(m.name)+'’s total includes '+m.extra.length+' title'+(m.extra.length>1?'s':'')+' from the pre-2016 league ('+m.extra.join(' &amp; ')+') — a different league, no bracket on record.').join('<br>');
     })();
 
     // ----- Playoff H2H matrix -----

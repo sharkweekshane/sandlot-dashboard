@@ -23,8 +23,21 @@ CANON = {
 # when the account's real name is already correct every year except one).
 SEASON_OVERRIDE = {
     (2017, "shane_ubc"): "Josh Cagan",        # the shane_ubc account was Josh in 2017
-    (2017, "Devin Lightman"): "Ari Geller",   # Devin didn't play in 2017 — Ari Geller ran his slot
 }
+
+# Teams whose ESPN member record was deleted (so they resolve to None / "vacant")
+# but which a real person actually ran — reassigned by (year, teamId). Andrew
+# "Flookey" Schmelling's accounts are gone, leaving his 2016 (3rd place) and 2023
+# (replaced Mitch L) teams blank without this.
+TEAM_OVERRIDE = {
+    (2016, 5): "Andrew Schmelling",
+    (2023, 12): "Andrew Schmelling",
+}
+
+# Championships won before the league we have on record (pre-2016, a different
+# league — no bracket or category data exists). Added to the playoff championship
+# count ONLY; appearances/records/roto are untouched. Shane won 2013 and 2015.
+EXTRA_TITLES = {"Shane Simon": [2013, 2015]}
 
 # component statId map (same as the main build)
 COMP = {"AB": 0, "H": 1, "HR": 5, "BB": 10, "HBP": 12, "SF": 13, "R": 20,
@@ -72,6 +85,9 @@ def managers(data, year):
     members = {m["id"]: m for m in data.get("members", [])}
     out = {}
     for t in data.get("teams", []):
+        if (year, t["id"]) in TEAM_OVERRIDE:
+            out[t["id"]] = TEAM_OVERRIDE[(year, t["id"])]
+            continue
         owners = t.get("owners") or []
         pid = t.get("primaryOwner") or (owners[0] if owners else None)
         m = members.get(pid)
@@ -314,13 +330,16 @@ def build(cookies, league_id):
     } for nm, p in roto_pts.items()]
     roto_rankings.sort(key=lambda r: (-r["avg"], -r["seasons"]))
 
+    for nm, yrs in EXTRA_TITLES.items():
+        pchamp[nm] = pchamp.get(nm, 0) + len(yrs)
+
     pset = set(pappear) | set(pchamp)
     playoff_summary = []
     for nm in pset:
         rec = p_h2h.get(nm, {})
         playoff_summary.append({
             "name": nm, "champs": pchamp.get(nm, 0), "byes": pbye.get(nm, 0),
-            "app": pappear.get(nm, 0),
+            "app": pappear.get(nm, 0), "extra": EXTRA_TITLES.get(nm, []),
             "W": sum(v[0] for v in rec.values()),
             "L": sum(v[1] for v in rec.values()),
             "T": sum(v[2] for v in rec.values()),
