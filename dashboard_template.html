@@ -17,7 +17,7 @@ header .sub{color:var(--muted);font-size:14px;margin-top:4px}
 .tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:500;padding:8px 12px;cursor:pointer}
 .tab.active{color:var(--text);border-bottom-color:var(--accent)}
 .panel{display:none}.panel.active{display:block}
-#history.active{width:min(98vw,1600px);margin-left:50%;transform:translateX(-50%)}
+#history.active,#playoffs.active{width:min(98vw,1600px);margin-left:50%;transform:translateX(-50%)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
@@ -41,11 +41,24 @@ th.srt:hover{color:var(--text)}
 .seg{appearance:none;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;cursor:pointer}
 .seg.active{color:var(--text);border-color:var(--accent)}
 .chip.on{border-color:var(--accent);color:var(--text)}
-#predmx,#h2hmx{border-collapse:collapse;font-size:13px;min-width:660px}
-#predmx td,#predmx th,#h2hmx td,#h2hmx th{padding:4px 5px;text-align:center;border-bottom:none;white-space:nowrap}
-#predmx th,#h2hmx th{font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
-#predmx td.lbl,#predmx th.lbl,#h2hmx td.lbl,#h2hmx th.lbl{text-align:left}
-#h2hmx{font-size:12px;min-width:0}#h2hmx td,#h2hmx th{padding:3px 4px}
+#predmx,#h2hmx,#pmx{border-collapse:collapse;font-size:13px;min-width:660px}
+#predmx td,#predmx th,#h2hmx td,#h2hmx th,#pmx td,#pmx th{padding:4px 5px;text-align:center;border-bottom:none;white-space:nowrap}
+#predmx th,#h2hmx th,#pmx th{font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+#predmx td.lbl,#predmx th.lbl,#h2hmx td.lbl,#h2hmx th.lbl,#pmx td.lbl,#pmx th.lbl{text-align:left}
+#h2hmx,#pmx{font-size:12px;min-width:0}#h2hmx td,#h2hmx th,#pmx td,#pmx th{padding:3px 4px}
+/* Playoff brackets */
+.pbr{display:flex;gap:16px;align-items:stretch;overflow-x:auto;padding:6px 2px 10px}
+.pcol{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:188px}
+.ph{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px;text-align:center}
+.pgame{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card)}
+.pteam{display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:13px;white-space:nowrap}
+.pteam+.pteam{border-top:1px solid var(--border)}
+.pteam.w{font-weight:600;background:rgba(31,157,99,.13)}
+.pteam.l{color:var(--muted)}
+.psd{color:var(--faint);font-size:10px;font-weight:700;min-width:18px;text-align:center;border:1px solid var(--border);border-radius:4px;padding:1px 0}
+.psc{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pbye{font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:9px;padding:7px 10px;text-align:center}
+.pcrown{font-size:14px}
 .mxc{cursor:pointer;border-radius:4px}
 .mxc:hover{outline:2px solid var(--accent)}
 .wtl{display:flex;height:22px;border-radius:6px;overflow:hidden;font-size:11px;color:#fff}
@@ -72,6 +85,7 @@ svg text{fill:var(--muted)}
   <button class="tab" data-tab="report">Team report</button>
   <button class="tab" data-tab="wh">Wubbies &amp; HAGS</button>
   <button class="tab" data-tab="pred">Predictions</button>
+  <button class="tab" data-tab="playoffs">Playoffs</button>
   <button class="tab" data-tab="history">History</button>
 </div>
 
@@ -167,6 +181,28 @@ svg text{fill:var(--muted)}
     <div id="rrsec" style="display:none">
       <div class="note">All-time roto rankings: each completed season the roto winner scores 12 down to 1 for last (scaled for 8/10/12-team years), averaged across the seasons each manager finished — so more years doesn't help or hurt. Hover Seasons for the year-by-year finishes.</div>
       <table id="rrtbl" style="max-width:560px"></table>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="playoffs">
+  <div class="card">
+    <div class="ctrl">
+      <button class="seg active" id="psegA">Brackets</button>
+      <button class="seg" id="psegB">Titles &amp; records</button>
+      <span style="font-size:13px;color:var(--muted)">6-team championship bracket · top-2 seeds bye round 1</span>
+    </div>
+    <div id="posec">
+      <div class="note">Each season's championship bracket. Winner of the final is the champ (🏆). Seed shown at left, category score at right. Pick a year.</div>
+      <div class="ctrl" id="poyears"></div>
+      <div id="pobracket"></div>
+    </div>
+    <div id="pchsec" style="display:none;position:relative">
+      <div class="note">All-time playoff results. <b>Titles</b> = championships · <b>Byes</b> = first-round byes (earned as a top-2 seed) · <b>Apps</b> = seasons reaching the 6-team bracket · <b>Record</b> = wins-losses in bracket games.</div>
+      <table id="ptbl" style="max-width:660px"></table>
+      <div class="note" style="margin-top:20px">Playoff head-to-head — bracket games only. Cell = row manager beat the column manager; hover for the W-L-T.</div>
+      <div style="overflow-x:auto"><table id="pmx"></table></div>
+      <div id="ptip" class="tip"></div>
     </div>
   </div>
 </div>
@@ -546,6 +582,95 @@ const DASH = /*__DASH_DATA__*/null;
       RR.forEach((m,i)=>{h+='<tr><td>'+(i+1)+'</td><td><span class="sw" style="display:inline-block;background:'+(colM[m.name]||'#888780')+';margin-right:7px"></span>'+esc(m.name)+'</td><td class="n" style="font-weight:600">'+m.avg.toFixed(2)+'</td><td class="n">'+m.titles+'</td><td class="n" title="'+Object.entries(m.finishes).map(([y,r])=>y+': #'+r).join(', ')+'">'+m.seasons+'</td></tr>';});
       document.getElementById('rrtbl').innerHTML=h;})();
     rotoYear(ys.value);
+  })();
+
+  // ---------- Playoffs (all-time championship brackets) ----------
+  (function(){
+    const H=DASH.history; if(!H||!H.playoffs)return;
+    const PO=H.playoffs, PS=H.playoffSummary||[], PMX=H.playoffH2H||{};
+    const MGR=H.managers||[],colM={};MGR.forEach(m=>colM[m.name]=m.color);
+    const col=n=>colM[n]||'#888780';
+    const sw=n=>'<span class="sw" style="display:inline-block;background:'+col(n)+';margin-right:7px"></span>';
+    const short=n=>{const p=n.split(' ');return p.length>1?p[0]+' '+p[p.length-1][0]+'.':n;};
+    const years=Object.keys(PO).map(Number).sort((a,b)=>b-a); // newest first
+
+    // ----- Brackets -----
+    const roundName=(r,maxR)=>r===maxR?'Final':r===maxR-1?'Semifinals':r===maxR-2?'Quarterfinals':'Round '+r;
+    const teamRow=(seed,name,score,won,champ)=>name==null?'':
+      '<div class="pteam '+(won?'w':'l')+'">'
+        +'<span class="psd">'+(seed==null?'–':seed)+'</span>'
+        +(champ?'<span class="pcrown">🏆</span> ':'')
+        +'<span>'+esc(name)+'</span>'
+        +'<span class="psc">'+(score==null?'':score)+'</span></div>';
+    const yc=document.getElementById('poyears');
+    function renderBracket(y){
+      const P=PO[String(y)]; if(!P){document.getElementById('pobracket').innerHTML='';return;}
+      const gs=P.games||[],maxR=gs.reduce((m,g)=>Math.max(m,g.r),0),byR={};
+      gs.forEach(g=>(byR[g.r]=byR[g.r]||[]).push(g));
+      const champ=P.champion;
+      let h='<div class="ttl" style="margin:4px 0 12px">'+y+' playoffs · <span class="pcrown">🏆</span> '
+        +sw(champ)+esc(champ)+'</div><div class="pbr">';
+      for(let r=1;r<=maxR;r++){
+        h+='<div class="pcol"><div class="ph">'+roundName(r,maxR)+'</div>';
+        if(r===1&&P.byes&&P.byes.length)
+          h+='<div class="pbye">Byes — '+P.byes.map(b=>esc(b.m)+(b.s?' (#'+b.s+')':'')).join(', ')+'</div>';
+        (byR[r]||[]).forEach(g=>{const isFinal=r===maxR;
+          h+='<div class="pgame">'
+            +teamRow(g.hs,g.hm,g.hw,g.win==='HOME',isFinal&&g.hm===champ)
+            +teamRow(g.as,g.am,g.aw,g.win==='AWAY',isFinal&&g.am===champ)
+            +'</div>';});
+        h+='</div>';
+      }
+      document.getElementById('pobracket').innerHTML=h+'</div>';
+      yc.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.y===y));
+    }
+    years.forEach(y=>{const c=document.createElement('span');c.className='chip';c.dataset.y=y;
+      c.innerHTML='<b>'+y+'</b> · '+esc(short(PO[String(y)].champion));
+      c.onclick=()=>renderBracket(y);yc.appendChild(c);});
+
+    // ----- Titles & records table -----
+    (function(){
+      const pctOf=m=>{const g=m.W+m.L+m.T;return g?(m.W+0.5*m.T)/g:0;};
+      let h='<tr><th>#</th><th>Manager</th><th class="n">🏆</th><th class="n">Byes</th><th class="n">Apps</th><th class="n">Record</th><th class="n">Win%</th></tr>';
+      PS.forEach((m,i)=>{const g=m.W+m.L+m.T;
+        h+='<tr><td>'+(i+1)+'</td><td>'+sw(m.name)+esc(m.name)+'</td>'
+          +'<td class="n" style="font-weight:600">'+(m.champs||'–')+'</td>'
+          +'<td class="n">'+(m.byes||'–')+'</td><td class="n">'+m.app+'</td>'
+          +'<td class="n">'+m.W+'-'+m.L+(m.T?'-'+m.T:'')+'</td>'
+          +'<td class="n">'+(g?pctOf(m).toFixed(3).replace(/^0/,''):'—')+'</td></tr>';});
+      document.getElementById('ptbl').innerHTML=h;
+    })();
+
+    // ----- Playoff H2H matrix -----
+    (function(){
+      const order=PS.map(m=>m.name);
+      let h='<tr><th class="lbl" style="color:var(--faint)">row vs col</th>';
+      order.forEach(b=>h+='<th title="'+esc(b)+'">'+esc(short(b))+'</th>');h+='<th>Record</th></tr>';
+      order.forEach(a=>{const ar=PMX[a]||{};let W=0,L=0,T=0;
+        h+='<tr><td class="lbl">'+sw(a)+esc(a)+'</td>';
+        order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
+          const rec=ar[b];
+          if(!rec||rec[0]+rec[1]+rec[2]===0){h+='<td style="color:var(--faint)">–</td>';return;}
+          const tg=rec[0]+rec[1]+rec[2],p=(rec[0]+0.5*rec[2])/tg,d=p-.5,
+            al=Math.min(.55,Math.abs(d)*1.7+.12).toFixed(2),c=d>=0?'31,157,99':'226,75,74';
+          h+='<td class="hc" data-t="'+esc(a)+' vs '+esc(b)+' (playoffs): '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+c+','+al+')">'+rec[0]+'-'+rec[1]+(rec[2]?'-'+rec[2]:'')+'</td>';});
+        for(const b in ar){W+=ar[b][0];L+=ar[b][1];T+=ar[b][2];}
+        h+='<td style="font-weight:600">'+W+'-'+L+(T?'-'+T:'')+'</td></tr>';});
+      document.getElementById('pmx').innerHTML=h;
+      const sec=document.getElementById('pchsec'),tip=document.getElementById('ptip');
+      sec.onmousemove=e=>{const c=e.target.closest('.hc');if(!c){tip.style.opacity=0;return;}
+        tip.textContent=c.dataset.t;tip.style.opacity=1;const r=sec.getBoundingClientRect();
+        let x=e.clientX-r.left+14;if(x+tip.offsetWidth>r.width)x=e.clientX-r.left-tip.offsetWidth-14;
+        tip.style.left=x+'px';tip.style.top=(e.clientY-r.top+14)+'px';};
+      sec.onmouseleave=()=>{tip.style.opacity=0;};
+    })();
+
+    // ----- sub-toggle -----
+    const segs=[['psegA','posec'],['psegB','pchsec']];
+    segs.forEach(([bid])=>document.getElementById(bid).onclick=()=>
+      segs.forEach(([b,s])=>{const on=b===bid;document.getElementById(b).classList.toggle('active',on);document.getElementById(s).style.display=on?'':'none';}));
+
+    if(years.length)renderBracket(years[0]);
   })();
 })();
 </script>

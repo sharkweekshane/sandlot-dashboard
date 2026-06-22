@@ -182,11 +182,17 @@ def build(cookies, league_id):
     roto_pts = {}     # manager -> [normalized roto points per season played]
     roto_fin = {}     # manager -> {season(str): final/current roto rank}
     roto_titles = {}  # manager -> count of completed-season roto championships
+    playoffs = {}     # season(str) -> {champion, byes:[mgr], games:[...]} (winners bracket)
+    pchamp, pbye, pappear = {}, {}, {}  # manager -> championships / byes / playoff appearances
+    p_h2h = {}        # manager -> mgr -> [W,L,T] in playoff (winners-bracket) games
 
     def add(a, b, res):
         i = {"W": 0, "L": 1, "T": 2}[res]
         h2h.setdefault(a, {}).setdefault(b, [0, 0, 0])[i] += 1
         h2h_year.setdefault(str(yr), {}).setdefault(a, {}).setdefault(b, [0, 0, 0])[i] += 1
+
+    def padd(a, b, res):
+        p_h2h.setdefault(a, {}).setdefault(b, [0, 0, 0])[{"W": 0, "L": 1, "T": 2}[res]] += 1
 
     for yr in SEASONS:
         try:
@@ -232,6 +238,52 @@ def build(cookies, league_id):
                     if done and rk == 1:
                         roto_titles[nm] = roto_titles.get(nm, 0) + 1
 
+        # Playoffs — winners bracket (the championship bracket); completed years only
+        seed = {t["id"]: t.get("playoffSeed") for t in data["teams"]}
+        wb = [g for g in data["schedule"] if g.get("playoffTierType") == "WINNERS_BRACKET"]
+        champ = next((mgr.get(t["id"]) for t in data["teams"]
+                      if t.get("rankCalculatedFinal") == 1), None)
+        if wb and champ:
+            r0 = min(g.get("matchupPeriodId") for g in wb)
+            games, byes_yr, appear_yr = [], [], set()
+            for g in wb:
+                ht = (g.get("home") or {}).get("teamId")
+                at = (g.get("away") or {}).get("teamId")
+                hm, am = mgr.get(ht), mgr.get(at)
+                if ht is None or at is None:  # bye placeholder slot
+                    ptid = ht if ht is not None else at
+                    bm = mgr.get(ptid)
+                    if bm:
+                        byes_yr.append({"s": seed.get(ptid), "m": bm})
+                        appear_yr.add(bm)
+                    continue
+                if hm:
+                    appear_yr.add(hm)
+                if am:
+                    appear_yr.add(am)
+                w = g.get("winner")
+                games.append({
+                    "r": g.get("matchupPeriodId") - r0 + 1,
+                    "hs": seed.get(ht), "hm": hm,
+                    "hw": ((g.get("home") or {}).get("cumulativeScore") or {}).get("wins"),
+                    "as": seed.get(at), "am": am,
+                    "aw": ((g.get("away") or {}).get("cumulativeScore") or {}).get("wins"),
+                    "win": w})
+                if w in ("HOME", "AWAY", "TIE") and hm and am and hm != am:
+                    if w == "HOME":
+                        padd(hm, am, "W"); padd(am, hm, "L")
+                    elif w == "AWAY":
+                        padd(am, hm, "W"); padd(hm, am, "L")
+                    else:
+                        padd(hm, am, "T"); padd(am, hm, "T")
+            games.sort(key=lambda x: (x["r"], x["hs"] if x["hs"] is not None else 99))
+            playoffs[str(yr)] = {"champion": champ, "byes": byes_yr, "games": games}
+            pchamp[champ] = pchamp.get(champ, 0) + 1
+            for b in byes_yr:
+                pbye[b["m"]] = pbye.get(b["m"], 0) + 1
+            for am in appear_yr:
+                pappear[am] = pappear.get(am, 0) + 1
+
     # manager summaries + colors
     mlist = sorted(seen)
     totals = {}
@@ -262,6 +314,19 @@ def build(cookies, league_id):
     } for nm, p in roto_pts.items()]
     roto_rankings.sort(key=lambda r: (-r["avg"], -r["seasons"]))
 
+    pset = set(pappear) | set(pchamp)
+    playoff_summary = []
+    for nm in pset:
+        rec = p_h2h.get(nm, {})
+        playoff_summary.append({
+            "name": nm, "champs": pchamp.get(nm, 0), "byes": pbye.get(nm, 0),
+            "app": pappear.get(nm, 0),
+            "W": sum(v[0] for v in rec.values()),
+            "L": sum(v[1] for v in rec.values()),
+            "T": sum(v[2] for v in rec.values()),
+        })
+    playoff_summary.sort(key=lambda m: (-m["champs"], -m["app"], -(m["W"] - m["L"])))
+
     return {
         "seasons": [y for y in SEASONS if str(y) in roto] or SEASONS,
         "managers": managers_out,
@@ -269,4 +334,7 @@ def build(cookies, league_id):
         "h2hByYear": h2h_year,
         "roto": roto,
         "rotoRankings": roto_rankings,
+        "playoffs": playoffs,
+        "playoffSummary": playoff_summary,
+        "playoffH2H": p_h2h,
     }
