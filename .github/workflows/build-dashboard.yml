@@ -2,9 +2,12 @@ name: Build & deploy dashboard
 
 on:
   schedule:
-    # 07:00 UTC = ~3am US Eastern (EDT during the season; 2am in EST winter).
-    # GitHub may delay scheduled runs under load — fine for a daily refresh.
-    - cron: "0 7 * * *"
+    # Three daily refreshes at ~12am, 5am, and 12pm US Eastern.
+    # GitHub cron is UTC and ignores DST; these UTC hours map to EDT (baseball
+    # season). In EST winter they'd land an hour earlier — fine, season's over.
+    # 04:00 UTC = 12am ET · 09:00 UTC = 5am ET · 16:00 UTC = 12pm ET.
+    # GitHub may delay scheduled runs under load.
+    - cron: "0 4,9,16 * * *"
   workflow_dispatch: {}        # lets you run it on demand from the Actions tab
   push:
     branches: [main]           # also rebuild on every push to main

@@ -60,6 +60,34 @@ PALETTE = ["#185FA5", "#1D9E75", "#BA7517", "#639922", "#D4537E", "#7F77DD",
            "#16a085", "#8e44ad", "#2c7fb8", "#d68910", "#27ae60", "#a93226"]
 ME = "Shane Simon"
 
+# Canonical per-PERSON colors — ONE stable color per manager used EVERYWHERE
+# (current-season teams in build_dashboard AND all-time history here), so a
+# person is the same color on every tab. Shane is the red. Add new managers
+# here as they join the league to keep their color consistent across tabs.
+PERSON_COLORS = {
+    "Shane Simon":       "#DC143C",  # red
+    "Ben Harpe":         "#1C6FB8",  # blue
+    "Jordan Harpel":     "#2F9E44",  # green
+    "Devin Lightman":    "#E8590C",  # orange
+    "Nicholas Scoliard": "#9C36B5",  # purple
+    "Peter Logan":       "#0CA6C2",  # cyan
+    "Matt Klayman":      "#E64980",  # pink
+    "Jeff Braverman":    "#8B5E34",  # brown
+    "Mitch Viall":       "#66A80F",  # olive-lime
+    "Michael Fisher":    "#12B886",  # mint
+    "Michael Violette":  "#4263EB",  # indigo
+    "Thomas Newton":     "#F59F00",  # amber
+    "Jeremy Wilner":     "#0B7285",  # dark teal
+    "Sam Folco":         "#A61E4D",  # dark rose
+    "Isaac Wolfson":     "#5F3DC4",  # deep violet
+    "Mitch Levine":      "#868E96",  # gray
+    "Cyrus Geller":      "#B08900",  # dark gold
+    "Josh Cagan":        "#4DABF7",  # light blue
+    "Nick Destefano":    "#2B8A3E",  # forest
+    "Andrew Schmelling": "#BE4BDB",  # orchid
+    "Ryan Draghi":       "#74B816",  # lime
+}
+
 
 def fetch(year, cookies, lid):
     if year == 2026:
@@ -311,8 +339,8 @@ def build(cookies, league_id):
     color = {}
     i = 0
     for a in mlist:
-        if a == ME:
-            color[a] = "#DC143C"
+        if a in PERSON_COLORS:
+            color[a] = PERSON_COLORS[a]
         else:
             color[a] = PALETTE[i % len(PALETTE)]
             i += 1

@@ -64,14 +64,19 @@ def fetch():
 
 
 def team_meta(data):
+    # Color each team by its OWNER (person), so a manager is the same color here
+    # and on the History tab. Falls back to the palette only for an unknown owner.
+    mgr = history.managers(data, int(SEASON))  # teamId -> canonical person
     meta = {}
+    fb = 0
     for t in data.get("teams", []):
         nm = (t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}").strip()
-        meta[t["id"]] = {"name": nm or f"Team {t['id']}", "abbrev": (t.get("abbrev") or "").strip()}
-    names_sorted = sorted((m["name"] for m in meta.values()), key=str.lower)
-    cmap = {n: COLORS[i] for i, n in enumerate(names_sorted)}
-    for tid in meta:
-        meta[tid]["color"] = cmap[meta[tid]["name"]]
+        col = history.PERSON_COLORS.get(mgr.get(t["id"]))
+        if not col:
+            col = COLORS[fb % len(COLORS)]
+            fb += 1
+        meta[t["id"]] = {"name": nm or f"Team {t['id']}",
+                         "abbrev": (t.get("abbrev") or "").strip(), "color": col}
     return meta
 
 
