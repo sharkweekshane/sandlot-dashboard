@@ -15,6 +15,7 @@ import datetime
 import json
 import os
 import shutil
+from collections import Counter
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -64,19 +65,28 @@ def fetch():
 
 
 def team_meta(data):
-    # Color each team by its OWNER (person), so a manager is the same color here
-    # and on the History tab. Falls back to the palette only for an unknown owner.
+    # Identify each team by its MANAGER (person), not the team name — the name,
+    # color, and abbrev are all the manager's. Falls back to the team name /
+    # palette only for an unowned team. Abbrev = first name, plus a last initial
+    # when two managers share a first name.
     mgr = history.managers(data, int(SEASON))  # teamId -> canonical person
+    person = {}
+    for t in data.get("teams", []):
+        tname = (t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}").strip()
+        person[t["id"]] = mgr.get(t["id"]) or tname or f"Team {t['id']}"
+    firsts = Counter(p.split()[0] for p in person.values())
     meta = {}
     fb = 0
     for t in data.get("teams", []):
-        nm = (t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}").strip()
+        nm = person[t["id"]]
+        parts = nm.split()
+        ab = parts[0] + (" " + parts[-1][0] + "."
+                         if len(parts) > 1 and firsts[parts[0]] > 1 else "")
         col = history.PERSON_COLORS.get(mgr.get(t["id"]))
         if not col:
             col = COLORS[fb % len(COLORS)]
             fb += 1
-        meta[t["id"]] = {"name": nm or f"Team {t['id']}",
-                         "abbrev": (t.get("abbrev") or "").strip(), "color": col}
+        meta[t["id"]] = {"name": nm, "abbrev": ab, "color": col}
     return meta
 
 

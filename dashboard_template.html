@@ -426,7 +426,7 @@ const DASH = /*__DASH_DATA__*/null;
     TEAMS.forEach(t=>{const o=document.createElement('option');o.value=t.name;o.textContent=t.name;bh.appendChild(o);});
     bh.onchange=()=>{HI=bh.value;draw(bc.value);};
     const leg=document.getElementById('bleg');
-    TEAMS.forEach(t=>{leg.innerHTML+='<span class="chip" style="cursor:default"><span class="sw" style="background:'+t.color+'"></span><b>'+esc(t.abbrev)+'</b> '+esc(t.name)+'</span>';});
+    TEAMS.forEach(t=>{leg.innerHTML+='<span class="chip" style="cursor:default"><span class="sw" style="background:'+t.color+'"></span>'+esc(t.name)+'</span>';});
     draw('HR');
   })();
 
@@ -449,7 +449,7 @@ const DASH = /*__DASH_DATA__*/null;
       document.getElementById('tcard').innerHTML=
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
         +'<div style="display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;border-radius:4px;background:'+t.color+'"></span>'
-        +'<div><div style="font-size:16px;font-weight:600">'+esc(name)+'</div><div style="font-size:13px;color:var(--muted)">'+esc(t.abbrev)+' · '+ord(oRank)+' of 12 overall</div></div></div>'
+        +'<div><div style="font-size:16px;font-weight:600">'+esc(name)+'</div><div style="font-size:13px;color:var(--muted)">'+ord(oRank)+' of 12 overall</div></div></div>'
         +'<div style="text-align:right"><div style="font-size:22px;font-weight:600">'+o[0]+'-'+o[1]+'-'+o[2]+'</div><div style="font-size:13px;color:var(--muted)">'+wp+' category win%</div></div></div>'
         +'<div style="font-size:13px;color:var(--muted);margin:8px 0">strongest <span class="hi">'+strong+'</span> · weakest <span class="hi">'+weak+'</span></div>'
         +'<div style="border-top:1px solid var(--border);padding-top:4px">'+rows+'</div>';
