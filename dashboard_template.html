@@ -6,31 +6,37 @@
 <title>Sandlot — Roto &amp; Category Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
-:root{--bg:#f6f6f3;--card:#fff;--text:#1b1b19;--muted:#6b6a64;--faint:#9b9a92;--border:#e3e2db;--accent:#185FA5;--win:#1f9d63;--tie:#b4b2a9;--loss:#e24b4a}
-@media(prefers-color-scheme:dark){:root{--bg:#17171a;--card:#202024;--text:#ececec;--muted:#a3a29b;--faint:#76756f;--border:#34343a;--accent:#5aa0ff}}
+@import url('https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,500;0,600;0,700;1,500&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+/* Ballpark Vintage — cream paper, ballpark navy, brick-red ink, mustard-gold */
+:root{--bg:#f4ecd8;--card:#fbf6ea;--surfaceAlt:#f1e7cf;--text:#24201a;--muted:#6f6450;--faint:#a89a7c;--border:#ddccab;--accent:#b1442f;--accentText:#fbf6ea;--navy:#1c3d5a;--gold:#c98a1a;--win:#3f7d3a;--tie:#c9bfa6;--loss:#bb4435}
+@media(prefers-color-scheme:dark){:root{--bg:#181410;--card:#211b14;--surfaceAlt:#1a150f;--text:#efe6d4;--muted:#b3a589;--faint:#7a6e58;--border:#3a3024;--accent:#e07a52;--accentText:#181410;--navy:#7fa9cc;--gold:#e0a73c;--win:#6fb064;--tie:#5a4f3d;--loss:#d96a55}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+h1,.ttl{font-family:'Bitter',Georgia,serif;letter-spacing:-.01em}
+table{font-variant-numeric:tabular-nums}
+td.n,th.n{font-family:'DM Mono',ui-monospace,SFMono-Regular,monospace}
+#h2hmx,#pmx,#predmx{font-family:'DM Mono',ui-monospace,monospace}
 .wrap{max-width:920px;margin:0 auto;padding:20px 18px 48px}
-header{display:flex;align-items:center;gap:14px}
+header{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:1.5px solid var(--navy)}
 header img{height:72px;width:auto;border-radius:8px;border:1px solid var(--border)}
-header h1{font-size:22px;font-weight:600;margin:0}
+header h1{font-size:23px;font-weight:700;margin:0;color:var(--navy)}
 header .sub{color:var(--muted);font-size:14px;margin-top:4px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 16px;border-bottom:1px solid var(--border)}
 .tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:500;padding:8px 12px;cursor:pointer}
-.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .panel{display:none}.panel.active{display:block}
 #history.active,#playoffs.active{width:min(98vw,1600px);margin-left:50%;transform:translateX(-50%)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
-th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-family:'DM Mono',ui-monospace,monospace;border-bottom:1.5px solid var(--navy)}
 td.n,th.n{text-align:right}
 select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px}
 input[type=range]{accent-color:var(--accent);cursor:pointer;max-width:240px}
 label{font-size:13px;color:var(--muted)}
 .ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .chip{display:flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;background:var(--card)}
-.chip.dim{opacity:.4}.sw{width:11px;height:11px;border-radius:2px;flex:none}
+.chip.dim{opacity:.4}.sw{width:11px;height:11px;border-radius:2px;flex:none;border:1px solid rgba(36,32,26,.18)}
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .badge{font-size:12px;padding:2px 0;border-radius:8px;text-align:center}
 .row{display:grid;grid-template-columns:54px 1fr 70px 50px;align-items:center;gap:10px;padding:5px 0}
@@ -55,7 +61,7 @@ th.srt:hover{color:var(--text)}
 .pgame{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card)}
 .pteam{display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:13px;white-space:nowrap}
 .pteam+.pteam{border-top:1px solid var(--border)}
-.pteam.w{font-weight:600;background:rgba(31,157,99,.13)}
+.pteam.w{font-weight:600;background:rgba(63,125,58,.13)}
 .pteam.l{color:var(--muted)}
 .psd{color:var(--faint);font-size:10px;font-weight:700;min-width:18px;text-align:center;border:1px solid var(--border);border-radius:4px;padding:1px 0}
 .psc{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--muted)}
@@ -431,7 +437,7 @@ const DASH = /*__DASH_DATA__*/null;
       rd.sort((a,b)=>b.w-a.w||a.l-b.l);
       const strong=rd.slice(0,2).map(x=>x.c).join(', '),weak=rd.slice(-2).map(x=>x.c).reverse().join(', ');
       let rows='';rd.forEach(x=>{const tot=x.w+x.l+x.t;let bg='var(--border)',fg='var(--muted)';
-        if(x.rk<=4){bg='rgba(31,157,99,.15)';fg='var(--win)';}else if(x.rk>=9){bg='rgba(226,75,74,.15)';fg='var(--loss)';}
+        if(x.rk<=4){bg='rgba(63,125,58,.15)';fg='var(--win)';}else if(x.rk>=9){bg='rgba(187,68,53,.15)';fg='var(--loss)';}
         rows+='<div class="row"><span style="font-size:13px;font-weight:600">'+x.c+'</span>'
          +'<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--border)"><div style="width:'+(x.w/tot*100)+'%;background:'+WIN+'"></div><div style="width:'+(x.t/tot*100)+'%;background:'+TIE+'"></div><div style="width:'+(x.l/tot*100)+'%;background:'+LOSS+'"></div></div>'
          +'<span style="font-size:13px;text-align:right;color:var(--muted)">'+x.w+'-'+x.l+'-'+x.t+'</span>'
@@ -550,7 +556,7 @@ const DASH = /*__DASH_DATA__*/null;
         h+='<tr><td class="lbl"><span style="color:var(--faint)">'+(ri+1)+'</span> <span class="sw" style="display:inline-block;background:'+colOf[a]+';margin:0 6px 0 4px"></span>'+esc(a)+'</td>';
         order.forEach(b=>{
           if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
-          const p=hl[a][b],d=p-0.5,al=Math.min(0.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
+          const p=hl[a][b],d=p-0.5,al=Math.min(0.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'63,125,58':'187,68,53';
           h+='<td class="mxc" data-a="'+esc(a)+'" data-b="'+esc(b)+'" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';
         });
         h+='<td style="font-weight:600">'+Math.round(power[a]*100)+'</td>';
@@ -569,7 +575,7 @@ const DASH = /*__DASH_DATA__*/null;
       html+='<div style="font-size:12px;color:var(--muted);margin:4px 0 12px">Win '+Math.round(r.pWin*100)+'% · Tie '+Math.round(r.pTie*100)+'% · Loss '+Math.round(r.pLoss*100)+'% · expected categories '+r.expA.toFixed(1)+'–'+(12-r.expA).toFixed(1)+'</div>';
       const rows=CATS.map(c=>({c,p:r.perCat[c],a:wmean(WV[c][A],w),b:wmean(WV[c][B],w)})).sort((x,y)=>y.p-x.p);
       html+='<table style="width:100%;font-size:13px"><tr><th>Category</th><th class="n">'+esc(abbrOf[A])+'</th><th class="n">'+esc(abbrOf[B])+'</th><th class="n">P('+esc(abbrOf[A])+')</th><th></th></tr>';
-      rows.forEach(x=>{const pc=Math.round(x.p*100);let chip='~',bg='var(--border)',fg='var(--muted)';if(pc>=60){chip=esc(abbrOf[A]);bg='rgba(31,157,99,.15)';fg='#1f9d63';}else if(pc<=40){chip=esc(abbrOf[B]);bg='rgba(226,75,74,.15)';fg='#e24b4a';}
+      rows.forEach(x=>{const pc=Math.round(x.p*100);let chip='~',bg='var(--border)',fg='var(--muted)';if(pc>=60){chip=esc(abbrOf[A]);bg='rgba(63,125,58,.15)';fg='var(--win)';}else if(pc<=40){chip=esc(abbrOf[B]);bg='rgba(187,68,53,.15)';fg='var(--loss)';}
         html+='<tr><td>'+x.c+'</td><td class="n">'+fmt(x.c,x.a)+'</td><td class="n">'+fmt(x.c,x.b)+'</td><td class="n">'+pc+'%</td><td class="n"><span class="badge" style="background:'+bg+';color:'+fg+'">'+chip+'</span></td></tr>';});
       html+='</table>';
       const mx=Math.max.apply(null,r.dist);
@@ -618,7 +624,7 @@ const DASH = /*__DASH_DATA__*/null;
         order.forEach(b=>{if(a===b){h+='<td style="color:var(--faint)">·</td>';return;}
           const rec=(agg[a]||{})[b];
           if(!rec||rec[0]+rec[1]+rec[2]===0){h+='<td style="color:var(--faint)">–</td>';return;}
-          const g=rec[0]+rec[1]+rec[2],p=(rec[0]+0.5*rec[2])/g,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'31,157,99':'226,75,74';
+          const g=rec[0]+rec[1]+rec[2],p=(rec[0]+0.5*rec[2])/g,d=p-.5,al=Math.min(.5,Math.abs(d)*1.7).toFixed(2),col=d>=0?'63,125,58':'187,68,53';
           h+='<td class="hc" data-t="'+esc(a)+' vs '+esc(b)+': '+rec[0]+'-'+rec[1]+'-'+rec[2]+' ('+Math.round(p*100)+'%)" style="background:rgba('+col+','+al+')">'+Math.round(p*100)+'</td>';});
         const tg=m.W+m.L+m.T;h+='<td style="font-weight:600">'+m.W+'-'+m.L+'-'+m.T+'</td><td>'+(tg?pctOf(m).toFixed(3).replace(/^0/,''):'—')+'</td><td title="'+m.sin.join(', ')+'">'+m.yrs+'</td>';});
       document.getElementById('h2hmx').innerHTML=h;
@@ -735,7 +741,7 @@ const DASH = /*__DASH_DATA__*/null;
           const rec=ar[b];
           if(!rec||rec[0]+rec[1]+rec[2]===0){h+='<td style="color:var(--faint)">–</td>';return;}
           const tg=rec[0]+rec[1]+rec[2],p=(rec[0]+0.5*rec[2])/tg,d=p-.5,
-            al=Math.min(.55,Math.abs(d)*1.7+.12).toFixed(2),c=d>=0?'31,157,99':'226,75,74';
+            al=Math.min(.55,Math.abs(d)*1.7+.12).toFixed(2),c=d>=0?'63,125,58':'187,68,53';
           h+='<td class="hc" data-t="'+esc(a)+' vs '+esc(b)+' (playoffs): '+rec[0]+'-'+rec[1]+'-'+rec[2]+'" style="background:rgba('+c+','+al+')">'+rec[0]+'-'+rec[1]+(rec[2]?'-'+rec[2]:'')+'</td>';});
         for(const b in ar){W+=ar[b][0];L+=ar[b][1];T+=ar[b][2];}
         h+='<td style="font-weight:600">'+W+'-'+L+(T?'-'+T:'')+'</td></tr>';});
