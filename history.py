@@ -221,6 +221,7 @@ def data_team_name(data, tid):
 def build(cookies, league_id):
     h2h = {}          # mgrA -> mgrB -> [W,L,T]  (all-time)
     h2h_year = {}     # season(str) -> mgrA -> mgrB -> [W,L,T]  (per-season, for the slider)
+    seed_year = {}    # season(str) -> manager -> ESPN regular-season seed (official rank)
     seen = {}         # manager -> set of seasons
     roto = {}
     roto_pts = {}     # manager -> [normalized roto points per season played]
@@ -247,6 +248,10 @@ def build(cookies, league_id):
             continue
         rw = reg_weeks(data)
         mgr = managers(data, yr)
+        for t in data["teams"]:
+            nm = mgr.get(t["id"])
+            if nm:
+                seed_year.setdefault(str(yr), {})[nm] = t.get("playoffSeed")
         for t, name in mgr.items():
             if name:
                 seen.setdefault(name, set()).add(yr)
@@ -374,6 +379,24 @@ def build(cookies, league_id):
         })
     playoff_summary.sort(key=lambda m: (-m["champs"], -m["app"], -(m["W"] - m["L"])))
 
+    # Per-year regular-season standings: each manager's reg-season H2H record,
+    # ordered by ESPN's official regular-season seed (playoffSeed); win% is a
+    # fallback only where a seed is missing.
+    standings = {}
+    for y, yd in h2h_year.items():
+        sy = seed_year.get(y, {})
+        rows = []
+        for nm, opp in yd.items():
+            W = sum(r[0] for r in opp.values())
+            L = sum(r[1] for r in opp.values())
+            T = sum(r[2] for r in opp.values())
+            g = W + L + T
+            rows.append({"name": nm, "seed": sy.get(nm), "W": W, "L": L, "T": T,
+                         "pct": round((W + 0.5 * T) / g, 4) if g else 0})
+        rows.sort(key=lambda r: (r["seed"] if r["seed"] is not None else 99,
+                                 -r["pct"], -r["W"]))
+        standings[y] = rows
+
     return {
         "seasons": [y for y in SEASONS if str(y) in roto] or SEASONS,
         "managers": managers_out,
@@ -384,4 +407,5 @@ def build(cookies, league_id):
         "playoffs": playoffs,
         "playoffSummary": playoff_summary,
         "playoffH2H": p_h2h,
+        "standings": standings,
     }

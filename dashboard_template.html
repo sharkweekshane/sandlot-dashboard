@@ -6,16 +6,16 @@
 <title>Sandlot — Roto &amp; Category Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,500;0,600;0,700;1,500&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 /* Ballpark Vintage — cream paper, ballpark navy, brick-red ink, mustard-gold */
 :root{--bg:#f4ecd8;--card:#fbf6ea;--surfaceAlt:#f1e7cf;--text:#24201a;--muted:#6f6450;--faint:#a89a7c;--border:#ddccab;--accent:#b1442f;--accentText:#fbf6ea;--navy:#1c3d5a;--gold:#c98a1a;--win:#3f7d3a;--tie:#c9bfa6;--loss:#bb4435}
 @media(prefers-color-scheme:dark){:root{--bg:#181410;--card:#211b14;--surfaceAlt:#1a150f;--text:#efe6d4;--muted:#b3a589;--faint:#7a6e58;--border:#3a3024;--accent:#e07a52;--accentText:#181410;--navy:#7fa9cc;--gold:#e0a73c;--win:#6fb064;--tie:#5a4f3d;--loss:#d96a55}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
-h1,.ttl{font-family:'Bitter',Georgia,serif;letter-spacing:-.01em}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+h1,.ttl{font-family:'Inter',-apple-system,sans-serif;letter-spacing:-.01em}
 table{font-variant-numeric:tabular-nums}
-td.n,th.n{font-family:'DM Mono',ui-monospace,SFMono-Regular,monospace}
-#h2hmx,#pmx,#predmx{font-family:'DM Mono',ui-monospace,monospace}
+td.n,th.n{font-variant-numeric:tabular-nums}
+#h2hmx,#pmx,#predmx{font-variant-numeric:tabular-nums}
 .wrap{max-width:920px;margin:0 auto;padding:20px 18px 48px}
 header{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:1.5px solid var(--navy)}
 header img{height:72px;width:auto;border-radius:8px;border:1px solid var(--border)}
@@ -29,7 +29,7 @@ header .sub{color:var(--muted);font-size:14px;margin-top:4px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}
-th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-family:'DM Mono',ui-monospace,monospace;border-bottom:1.5px solid var(--navy)}
+th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--navy)}
 td.n,th.n{text-align:right}
 select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px}
 input[type=range]{accent-color:var(--accent);cursor:pointer;max-width:240px}
@@ -168,7 +168,7 @@ svg text{fill:var(--muted)}
   <button class="tab" data-tab="roto">Roto race</button>
   <button class="tab" data-tab="spreads">Category spreads</button>
   <button class="tab" data-tab="report">Team report</button>
-  <button class="tab" data-tab="wh">Wubbies &amp; HAGS</button>
+  <button class="tab" data-tab="wh">Player leaderboard</button>
   <button class="tab" data-tab="pred">Predictions</button>
   <button class="tab" data-tab="playoffs">Playoffs</button>
   <button class="tab" data-tab="history">History</button>
@@ -247,6 +247,7 @@ svg text{fill:var(--muted)}
   <div class="card">
     <div class="ctrl">
       <button class="seg active" id="hsegA">H2H records</button>
+      <button class="seg" id="hsegD">Season standings</button>
       <button class="seg" id="hsegB">Roto by season</button>
       <button class="seg" id="hsegC">Roto rankings</button>
       <span id="hspan" style="font-size:13px;color:var(--muted)"></span>
@@ -266,6 +267,11 @@ svg text{fill:var(--muted)}
     <div id="rrsec" style="display:none">
       <div class="note">All-time roto rankings: each completed season the roto winner scores 12 down to 1 for last (scaled for 8/10/12-team years), averaged across the seasons each manager finished — so more years doesn't help or hurt. Hover Seasons for the year-by-year finishes.</div>
       <table id="rrtbl" style="max-width:560px"></table>
+    </div>
+    <div id="ssec" style="display:none">
+      <div class="ctrl"><label for="ssyear">Season</label><select id="ssyear"></select></div>
+      <div class="note">Regular-season standings (head-to-head, most categories) for the selected year — final regular-season records, before the playoffs.</div>
+      <table id="sstbl" style="max-width:560px"></table>
     </div>
   </div>
 </div>
@@ -293,7 +299,6 @@ svg text{fill:var(--muted)}
   </div>
 </div>
 
-<div class="foot" id="foot"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -323,7 +328,6 @@ const DASH = /*__DASH_DATA__*/null;
     draw();
   }
   document.getElementById('sub').textContent=`${M.season} season · through week ${M.completedThrough} · updated ${M.asOf}`;
-  document.getElementById('foot').textContent=`League ${M.leagueId} · derived stats only, no credentials · ${WEEKS.length} weeks`;
 
   // tabs
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
@@ -661,9 +665,25 @@ const DASH = /*__DASH_DATA__*/null;
     }
     const ys=document.getElementById('hyear');H.seasons.forEach(y=>ys.add(new Option(y,y)));
     ys.value=H.seasons[H.seasons.length-1];ys.onchange=()=>rotoYear(ys.value);
-    const segs=[['hsegA','h2hsec'],['hsegB','rotosec'],['hsegC','rrsec']];
+    const segs=[['hsegA','h2hsec'],['hsegD','ssec'],['hsegB','rotosec'],['hsegC','rrsec']];
     function showSeg(id){segs.forEach(([bid,sid])=>{const on=bid===id;document.getElementById(bid).classList.toggle('active',on);document.getElementById(sid).style.display=on?'':'none';});if(id==='hsegB'&&window.__hroto)window.__hroto.resize();}
     segs.forEach(([bid])=>document.getElementById(bid).onclick=()=>showSeg(bid));
+    // Season standings — regular-season record for a chosen year, ordered by ESPN seed
+    (function(){
+      const ST=H.standings||{},sel=document.getElementById('ssyear');
+      const yrs=Object.keys(ST).map(Number).sort((a,b)=>b-a);
+      yrs.forEach(y=>sel.add(new Option(y,y)));
+      const done=new Set(Object.keys(H.playoffs||{}).map(Number));
+      sel.value=String(yrs.find(y=>done.has(y))||yrs[0]);
+      function render(){
+        const rows=ST[sel.value]||[];
+        let h='<tr><th>#</th><th>Manager</th><th class="n">W-L-T</th><th class="n">Win%</th></tr>';
+        rows.forEach((r,i)=>{const g=r.W+r.L+r.T;
+          h+='<tr><td>'+(i+1)+'</td><td><span class="sw" style="display:inline-block;background:'+(colM[r.name]||'#888780')+';margin-right:7px"></span>'+esc(r.name)+'</td><td class="n" style="font-weight:600">'+r.W+'-'+r.L+'-'+r.T+'</td><td class="n">'+(g?r.pct.toFixed(3).replace(/^0/,''):'—')+'</td></tr>';});
+        document.getElementById('sstbl').innerHTML=h;
+      }
+      sel.onchange=render;render();
+    })();
     (function(){const RR=H.rotoRankings||[];
       let h='<tr><th>#</th><th>Manager</th><th class="n">Roto pts/yr</th><th class="n">Roto titles</th><th class="n">Seasons</th></tr>';
       RR.forEach((m,i)=>{h+='<tr><td>'+(i+1)+'</td><td><span class="sw" style="display:inline-block;background:'+(colM[m.name]||'#888780')+';margin-right:7px"></span>'+esc(m.name)+'</td><td class="n" style="font-weight:600">'+m.avg.toFixed(2)+'</td><td class="n">'+m.titles+'</td><td class="n" title="'+Object.entries(m.finishes).map(([y,r])=>y+': #'+r).join(', ')+'">'+m.seasons+'</td></tr>';});
